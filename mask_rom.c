@@ -184,7 +184,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
     for (int i = 0; i < rom_exts_to_try.size; i++)
     {
         rom_ext_manifest_t current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
-
+        //__CPROVER_assert(__CPROVER_OBJECT_SIZE(current_rom_ext_manifest.signature) * 8 == 3072, "Signature is 3072-bits");
         if (!check_rom_ext_manifest(current_rom_ext_manifest)) {
           __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
           __CPROVER_assert(!__help_sign_valid(current_rom_ext_manifest.signature), "Stop verification iff signature is invalid");
@@ -200,7 +200,9 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
             continue;
         }
-
+       
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.key) * 8 == 3072, "Public key is 3072-bits");
+        
         //Step 2.iii.b
         if (!verify_rom_ext_signature(rom_ext_pub_key, current_rom_ext_manifest)) {
             continue;
