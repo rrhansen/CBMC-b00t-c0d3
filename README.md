@@ -3,15 +3,14 @@ Simplified initial boot code inspired by OpenTitan's secure boot
 
 The goal is to verify the security of the boot code using CBMC / UPPAAL
 
-##Verified
-[x] Property 1
-[] Property 2
-[] Property 3
-[] Property 4
-[] Property 5
-[] Property 6
-[] Property 7
-[] Property 8
-[] Property 9
-[] Property 10
-
+### Verified
+- [x] Property 1
+- [ ] Property 2
+- [ ] Property 3
+- [ ] Property 4
+- [ ] Property 5
+- [ ] Property 6
+- [ ] Property 7
+- [ ] Property 8
+- [ ] Property 9
+- [ ] Property 10
