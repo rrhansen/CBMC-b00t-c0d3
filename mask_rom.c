@@ -96,7 +96,14 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
     return current_rom_ext_manifest.pub_signature_key;
 }
 
-extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key); // returns a boolean value
+extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key) //assumed behavior behavior of check func
+{
+    for(int i = 0; i < RSA_SIZE; i++){
+      if(rom_ext_pub_key.value[i] != 0)
+        return 1; // If the key[i] != 0 for one i, the key is valid.
+    }
+    return 0; 
+}; // returns a boolean value
 
 extern char* HASH(char* message);
 
@@ -157,6 +164,14 @@ int __help_sign_valid(int* sign){ //used for CBMC assertion + postcondition
     return 0;
 }
 
+int __help_key_valid(int* key){ //used for CBMC assertion + postcondition
+    for(int i = 0; i < RSA_SIZE; i++){
+      if(key[i] != 0)
+        return 1;
+    }
+    return 0;
+}
+
 /*PROPERTY 1*/
 void PROOF_HARNESS(){
     boot_policy_t boot_policy;// = read_boot_policy();
@@ -172,6 +187,7 @@ void PROOF_HARNESS(){
         if(__validated_rom_exts[i]){
             __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
             __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition: rom_ext succesfull validation => valid signature");
+            __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value), "Postcondition: rom_ext succesfull validation => valid key");
         }
 
     }
@@ -210,8 +226,13 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
         //Step 2.iii.b
         if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
+          __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+          __CPROVER_assert(!__help_key_valid(rom_ext_pub_key.value), "Stop verification iff key is invalid");
             continue;
         }
+        __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+        __CPROVER_assert(__help_key_valid(rom_ext_pub_key.value), "Continue verification iff key is valid");
+
        
         //Step 2.iii.b
         if (!verify_rom_ext_signature(rom_ext_pub_key, current_rom_ext_manifest)) {
