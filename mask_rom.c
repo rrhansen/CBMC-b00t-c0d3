@@ -243,7 +243,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         pmp_unlock_rom_ext();
         
         //Step 2.iii.e
-        __validated_rom_exts[i] = 1;
+        __validated_rom_exts[i] = 1; //for CBMC
         if (!final_jump_to_rom_ext(current_rom_ext_manifest)) {
             //Step 2.iv            
             boot_failed_rom_ext_terminated(boot_policy, current_rom_ext_manifest);
