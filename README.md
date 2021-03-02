@@ -5,7 +5,7 @@ The goal is to verify the security of the boot code using CBMC / UPPAAL
 
 ### Verified
 - [x] Property 1
-- [ ] Property 2
+- [x] Property 2
 - [ ] Property 3
 - [ ] Property 4
 - [ ] Property 5
