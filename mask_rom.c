@@ -173,7 +173,7 @@ void PROOF_HARNESS(){
     __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 }
 
-/*Run Commnad: 
+/*Run Command: 
 cbmc mask_rom.c --function PROOF_HARNESS --unwind 100  --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 */
 
