@@ -102,8 +102,8 @@ extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key) //assumed behavior beh
       if(rom_ext_pub_key.value[i] != 0)
         return 1; // If the key[i] != 0 for one i, the key is valid.
     }
-    return 0; 
-}; // returns a boolean value
+    return 0; // returns a boolean value
+} 
 
 extern char* HASH(char* message);
 
@@ -172,7 +172,7 @@ int __help_key_valid(int* key){ //used for CBMC assertion + postcondition
     return 0;
 }
 
-/*PROPERTY 1*/
+/*PROPERTY 1 and 2*/
 void PROOF_HARNESS(){
     boot_policy_t boot_policy;// = read_boot_policy();
     rom_exts_manifests_t rom_exts_to_try;// = rom_ext_manifests_to_try(boot_policy);
@@ -186,8 +186,8 @@ void PROOF_HARNESS(){
     for(int i = 0; i < rom_exts_to_try.size; i++){
         if(__validated_rom_exts[i]){
             __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition: rom_ext succesfull validation => valid signature");
-            __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value), "Postcondition: rom_ext succesfull validation => valid key");
+            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition PROPERTY: 1 rom_ext succesfull validation => valid signature");
+            __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value), "Postcondition PROPERTY 2: rom_ext succesfull validation => valid key");
         }
 
     }
@@ -209,29 +209,29 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         rom_ext_manifest_t current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
 
         signature_t signature = current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == 3072, "Signature is 3072-bits");
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == 3072, "PROPERTY 1: Signature is 3072-bits");
         
         if (!check_rom_ext_manifest(current_rom_ext_manifest)) {
           __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-          __CPROVER_assert(!__help_sign_valid(current_rom_ext_manifest.signature.value), "Stop verification iff signature is invalid");
+          __CPROVER_assert(!__help_sign_valid(current_rom_ext_manifest.signature.value), "PROPERTY 1: Stop verification iff signature is invalid");
           continue;
         }
         __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-        __CPROVER_assert(__help_sign_valid(current_rom_ext_manifest.signature.value), "Continue verification iff signature is valid");
+        __CPROVER_assert(__help_sign_valid(current_rom_ext_manifest.signature.value), "PROPERTY 1: Continue verification iff signature is valid");
 
         //Step 2.iii.b
         pub_key_t rom_ext_pub_key = read_pub_key(current_rom_ext_manifest); 
         
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.value) * 8 == 3072, "Public key is 3072-bits");
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.value) * 8 == 3072, "PROPERTY 2: Public key is 3072-bits");
 
         //Step 2.iii.b
         if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
           __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-          __CPROVER_assert(!__help_key_valid(rom_ext_pub_key.value), "Stop verification iff key is invalid");
+          __CPROVER_assert(!__help_key_valid(rom_ext_pub_key.value), "PROPERTY 2: Stop verification iff key is invalid");
             continue;
         }
         __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-        __CPROVER_assert(__help_key_valid(rom_ext_pub_key.value), "Continue verification iff key is valid");
+        __CPROVER_assert(__help_key_valid(rom_ext_pub_key.value), "PROPERTY 2: Continue verification iff key is valid");
 
        
         //Step 2.iii.b
@@ -248,7 +248,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
             //Step 2.iv            
             boot_failed_rom_ext_terminated(boot_policy, current_rom_ext_manifest);
             int n;
-            switch(n){ //nondeterministic model boot_failed_rom_ext_terminated behavior
+            switch(n){ //nondeterministic model the boot_failed_rom_ext_terminated possible behavior
               case 0:
                 return;
               default:
