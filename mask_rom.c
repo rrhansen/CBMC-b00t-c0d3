@@ -173,6 +173,12 @@ void PROOF_HARNESS(){
 cbmc mask_rom.c --function PROOF_HARNESS --unwind 100  --unwindset mask_rom_boot.0:5 --unwinding-assertions --pointer-check --bounds-check
 */
 
+/*
+  BUGS:
+    i < rom_exts_to_try.size  -->   i <= rom_exts_to_try.size  (mask_rom_boot.0)
+    crash pc    (PROOF_HARNESS.0)
+*/
+
 void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_try )
 {
     __CPROVER_precondition(rom_exts_to_try.size < MAX_ROM_EXTS && rom_exts_to_try.size > 0, "Precondition: assumes 3 > rom_exts > 0");
