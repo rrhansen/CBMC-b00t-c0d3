@@ -1,7 +1,7 @@
 /*
 Verified for PROPERTY 1
-
 Written based on:
+
 sw/device/rom_ext/docs/manifest.md
 sw/device/mask_rom/mask_rom.c
 sw/device/mask_rom/docs/index.md
@@ -16,9 +16,16 @@ doc/security/specs/secure_boot/index.md
 #define MAX_ROM_EXTS 5
 #define RSA_SIZE 96
 
+//Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size
+typedef struct signature_t{
+    int32_t value[RSA_SIZE];
+    //something else
+} signature_t;
+
+
 //Represents a public key
 typedef struct pub_key_t{
-    int32_t key[RSA_SIZE];
+    int32_t value[RSA_SIZE];
     //something else
 } pub_key_t;
 
@@ -30,7 +37,7 @@ typedef struct rom_ext_manifest_t{
     //note: not part of the doc on the rom_ext_manifest, but included based on code seen in mask_rom.c
     int* entry_point;
     
-    int32_t signature[RSA_SIZE];
+    signature_t signature;
     
     //public part of signature key
     pub_key_t pub_signature_key;
@@ -97,7 +104,7 @@ extern char* HASH(char* message);
 extern int RSA_VERIFY(pub_key_t pub_key, char* message, int32_t* signature);
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest) {
-    return RSA_VERIFY(rom_ext_pub_key, HASH(manifest.image_code), manifest.signature); //0 or 1
+    return RSA_VERIFY(rom_ext_pub_key, HASH(manifest.image_code), manifest.signature.value); //0 or 1
 }
 
 extern void WRITE_PMP_REGION(uint8_t reg, uint8_t r, uint8_t w, uint8_t e, uint8_t l);
@@ -133,7 +140,7 @@ void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_
 
 int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
     for(int i = 0; i < RSA_SIZE; i++){
-      if(manifest.signature[i] != 0)
+      if(manifest.signature.value[i] != 0)
         return 1; // If the signature[i] != 0 for one i, the manifest is valid.
     }
     return 0; 
@@ -165,14 +172,14 @@ void PROOF_HARNESS(){
     for(int i = 0; i < rom_exts_to_try.size; i++){
         if(__validated_rom_exts[i]){
             __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature), "Postcondition: rom_ext succesfull validation => valid signature");
+            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition: rom_ext succesfull validation => valid signature");
         }
 
     }
     __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 }
 
-/*Run Commnad: 
+/*Run Command: 
 cbmc mask_rom.c --function PROOF_HARNESS --unwind 100  --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 */
 
@@ -186,13 +193,16 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
     {
         rom_ext_manifest_t current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
 
+        signature_t signature = current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == 3072, "Signature is 3072-bits");
+        
         if (!check_rom_ext_manifest(current_rom_ext_manifest)) {
           __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-          __CPROVER_assert(!__help_sign_valid(current_rom_ext_manifest.signature), "Stop verification iff signature is invalid");
+          __CPROVER_assert(!__help_sign_valid(current_rom_ext_manifest.signature.value), "Stop verification iff signature is invalid");
           continue;
         }
         __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-        __CPROVER_assert(__help_sign_valid(current_rom_ext_manifest.signature), "Continue verification iff signature is valid");
+        __CPROVER_assert(__help_sign_valid(current_rom_ext_manifest.signature.value), "Continue verification iff signature is valid");
 
         //Step 2.iii.b
         pub_key_t rom_ext_pub_key = read_pub_key(current_rom_ext_manifest); 
@@ -201,7 +211,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
             continue;
         }
-
+       
         //Step 2.iii.b
         if (!verify_rom_ext_signature(rom_ext_pub_key, current_rom_ext_manifest)) {
             continue;
