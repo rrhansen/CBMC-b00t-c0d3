@@ -1,6 +1,5 @@
 /*
-EARLY DRAFT
-Not compiled or otherwise tested for ANSI C compliance
+Verified for PROPERTY 1
 
 Written based on:
 sw/device/rom_ext/docs/manifest.md
