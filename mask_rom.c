@@ -1,8 +1,6 @@
 /*
-EARLY DRAFT
-Not compiled or otherwise tested for ANSI C compliance
-
-Written based on:
+CBMC Verification of OpenTitan bootcode,
+written based on:
 sw/device/rom_ext/docs/manifest.md
 sw/device/mask_rom/mask_rom.c
 sw/device/mask_rom/docs/index.md
