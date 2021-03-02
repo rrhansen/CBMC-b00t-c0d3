@@ -31,16 +31,12 @@ typedef struct pub_key_t{
 //Struct representing rom_ext_manifest
 typedef struct rom_ext_manifest_t{
     uint32_t identifier;
-    
-    //address of entry point
-    //note: not part of the doc on the rom_ext_manifest, but included based on code seen in mask_rom.c
-    int* entry_point;
-    
+      
     signature_t signature;
     
     //public part of signature key
     pub_key_t pub_signature_key;
-    char image_code[];
+    char* image_code;
 } rom_ext_manifest_t;
 
 
@@ -92,8 +88,8 @@ boot_policy_t read_boot_policy()
 rom_exts_manifests_t rom_ext_manifests_to_try(boot_policy_t boot_policy) {}
 
 
-pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
-    return current_rom_ext_manifest.pub_signature_key;
+pub_key_t read_pub_key(rom_ext_manifest_t __current_rom_ext_manifest) {
+    return __current_rom_ext_manifest.pub_signature_key;
 }
 
 extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key) //assumed behavior behavior of check func
@@ -121,14 +117,21 @@ void pmp_unlock_rom_ext() {
     //                  Region        Read       Write     Execute     Locked 
 }
 
-void __some_func(){} //used for CBMC assume
+int __current_rom_ext = 0; //for CBMC
+int __rom_ext_called[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
 
-int final_jump_to_rom_ext(rom_ext_manifest_t current_rom_ext_manifest) { // Returns a boolean value.
-    __CPROVER_assume(current_rom_ext_manifest.entry_point == &__some_func); //otherwise pointer errors
+
+void __some_fail_func(){ //used for CBMC assume
+  __rom_ext_called[__current_rom_ext] = 1; //for CBMC PROPERTY 6
+} 
+
+int final_jump_to_rom_ext(rom_ext_manifest_t __current_rom_ext_manifest) { // Returns a boolean value.
+    __CPROVER_assume(__current_rom_ext_manifest.image_code == &__some_fail_func); //for cbmc
     
     //Execute rom ext code step 2.iii.e
-    rom_ext_boot_func* rom_ext_entry = (rom_ext_boot_func*)current_rom_ext_manifest.entry_point;
+    rom_ext_boot_func* rom_ext_entry = (rom_ext_boot_func*)__current_rom_ext_manifest.image_code;
 
+    __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
     rom_ext_entry();
 
     //if rom_ext returns, we should return false 
@@ -140,8 +143,14 @@ void boot_failed(boot_policy_t boot_policy) {
     boot_policy.fail();
 }
 
-void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_t current_rom_ext_manifest) {
-    boot_policy.fail_rom_ext_terminated(current_rom_ext_manifest);
+
+int __rom_ext_fail_func[MAX_ROM_EXTS] = {0,0,0,0,0}; //for CBMC PROPERTY 6
+
+void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_t __current_rom_ext_manifest) {
+    __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+    __rom_ext_fail_func[__current_rom_ext] = 1; //for CBMC PROPERTY 6
+
+    boot_policy.fail_rom_ext_terminated(__current_rom_ext_manifest);
 }
 
 int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
@@ -155,6 +164,7 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 void __func_fail(){} //used for CBMC assume
 void __func_fail_rom_ext(rom_ext_manifest_t _){} //used for CBMC assume
 int __validated_rom_exts[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
+
 
 int __help_sign_valid(int* sign){ //used for CBMC assertion + postcondition
     for(int i = 0; i < RSA_SIZE; i++){
@@ -172,6 +182,11 @@ int __help_key_valid(int* key){ //used for CBMC assertion + postcondition
     return 0;
 }
 
+int __boot_policy_stop = 0;
+int __rom_ext_returned[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
+int __imply(int a, int b){return a ? b : 1;}
+int __boot_failed_called = 0;
+
 /*PROPERTY 1 and 2*/
 void PROOF_HARNESS(){
     boot_policy_t boot_policy;// = read_boot_policy();
@@ -182,12 +197,22 @@ void PROOF_HARNESS(){
     __CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
     
     mask_rom_boot(boot_policy, rom_exts_to_try);
-    
+
+    __CPROVER_postcondition(__current_rom_ext+1 <= rom_exts_to_try.size,  "Postcondition: should never check more rom_ext that there exist");
+
     for(int i = 0; i < rom_exts_to_try.size; i++){
-        if(__validated_rom_exts[i]){
+        if(__validated_rom_exts[i]){ //validated
             __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
             __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition PROPERTY: 1 rom_ext succesfull validation => valid signature");
             __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value), "Postcondition PROPERTY 2: rom_ext succesfull validation => valid key");
+            __CPROVER_postcondition(__rom_ext_called[i], "Postcondition PROPERTY 6: rom_ext succesfull validation => rom ext code inititated");
+            __CPROVER_postcondition(__imply(__rom_ext_returned[i], __rom_ext_fail_func[i]), "Postcondition PROPERTY 6: (valid rom _ext and rom_ext code return) => that rom_ext term func is called");
+        }
+        else{ //invalidated - unsafe to boot from
+          __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+          __CPROVER_postcondition(!__rom_ext_called[i],  "Postcondition PROPERTY 7: rom_ext INVALIDATED => rom ext code not executed");
+          __CPROVER_postcondition(__current_rom_ext > i || (i + 1) == rom_exts_to_try.size || __boot_policy_stop,  "Postcondition PROPERTY 7: rom_ext INVALIDATED => we check the next rom_ext if any left and no boot policy instructed stop");
+          __CPROVER_postcondition(__imply((i + 1) == rom_exts_to_try.size, __boot_failed_called), "Postcondition PROPERTY 8: last rom_ext fails => call fail func, unless early stop instruct by boot policy");
         }
 
     }
@@ -198,6 +223,13 @@ void PROOF_HARNESS(){
 cbmc mask_rom.c --function PROOF_HARNESS --unwind 100  --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 */
 
+
+/*
+  BUGS:
+    - Postcondition til PROPERTY 8 linje 215 failer. Burde altid være sand.
+
+*/
+
 void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_try ){
     __CPROVER_precondition(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0, "Precondition: assumes MAX_ROM_EXTS >= rom_exts > 0");
     __CPROVER_precondition(boot_policy.fail == &__func_fail, "Precondition: assumes boot_policy.fail has ok address");
@@ -206,21 +238,22 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
     //Måske step 2.iii
     for (int i = 0; i < rom_exts_to_try.size; i++)
     {
-        rom_ext_manifest_t current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
+        __current_rom_ext = i;
+        rom_ext_manifest_t __current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
 
-        signature_t signature = current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
+        signature_t signature = __current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
         __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == 3072, "PROPERTY 1: Signature is 3072-bits");
         
-        if (!check_rom_ext_manifest(current_rom_ext_manifest)) {
+        if (!check_rom_ext_manifest(__current_rom_ext_manifest)) {
           __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-          __CPROVER_assert(!__help_sign_valid(current_rom_ext_manifest.signature.value), "PROPERTY 1: Stop verification iff signature is invalid");
+          __CPROVER_assert(!__help_sign_valid(__current_rom_ext_manifest.signature.value), "PROPERTY 1: Stop verification iff signature is invalid");
           continue;
         }
-        __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-        __CPROVER_assert(__help_sign_valid(current_rom_ext_manifest.signature.value), "PROPERTY 1: Continue verification iff signature is valid");
+        __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+        __CPROVER_assert(__help_sign_valid(__current_rom_ext_manifest.signature.value), "PROPERTY 1: Continue verification iff signature is valid");
 
         //Step 2.iii.b
-        pub_key_t rom_ext_pub_key = read_pub_key(current_rom_ext_manifest); 
+        pub_key_t rom_ext_pub_key = read_pub_key(__current_rom_ext_manifest); 
         
         __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.value) * 8 == 3072, "PROPERTY 2: Public key is 3072-bits");
 
@@ -230,12 +263,12 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
           __CPROVER_assert(!__help_key_valid(rom_ext_pub_key.value), "PROPERTY 2: Stop verification iff key is invalid");
             continue;
         }
-        __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+        __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
         __CPROVER_assert(__help_key_valid(rom_ext_pub_key.value), "PROPERTY 2: Continue verification iff key is valid");
 
        
         //Step 2.iii.b
-        if (!verify_rom_ext_signature(rom_ext_pub_key, current_rom_ext_manifest)) {
+        if (!verify_rom_ext_signature(rom_ext_pub_key, __current_rom_ext_manifest)) {
             continue;
         }
         
@@ -244,12 +277,16 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         
         //Step 2.iii.e
         __validated_rom_exts[i] = 1; //for CBMC
-        if (!final_jump_to_rom_ext(current_rom_ext_manifest)) {
+        if (!final_jump_to_rom_ext(__current_rom_ext_manifest)) {
+            __rom_ext_returned[i] = 1; //for CBMC PROPERTY 6
+            __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+
             //Step 2.iv            
-            boot_failed_rom_ext_terminated(boot_policy, current_rom_ext_manifest);
+            boot_failed_rom_ext_terminated(boot_policy, __current_rom_ext_manifest);
             int n;
             switch(n){ //nondeterministic model the boot_failed_rom_ext_terminated possible behavior
               case 0:
+                __boot_policy_stop = 1;
                 return;
               default:
                 break;
@@ -258,6 +295,8 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
     } // End for
 
     //Step 2.iv
+    __boot_failed_called = 1;
+    __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
     boot_failed(boot_policy);
 }
 
