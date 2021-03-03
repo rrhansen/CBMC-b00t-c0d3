@@ -160,10 +160,10 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
     return 0; 
 }
 
-int __boot_failed_called = 0;
-void __func_fail(){ __boot_failed_called = 1;} //used for CBMC
-void __func_fail_rom_ext(rom_ext_manifest_t _){ __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
+int __boot_failed_called[MAX_ROM_EXTS] = {0,0,0,0,0};
 int __validated_rom_exts[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
+void __func_fail(){ __boot_failed_called[__current_rom_ext] = 1;} //used for CBMC
+void __func_fail_rom_ext(rom_ext_manifest_t _){ __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
 
 
 int __help_sign_valid(int* sign){ //used for CBMC assertion + postcondition
@@ -214,8 +214,8 @@ void PROOF_HARNESS(){
             __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]), "Postcondition PROPERTY 6: (invalid rom _ext and rom_ext code !return) => that rom_ext term func not called");
             __CPROVER_postcondition(!__rom_ext_called[i],  "Postcondition PROPERTY 7: rom_ext INVALIDATED => rom ext code not executed");
             __CPROVER_postcondition(__current_rom_ext > i || (i + 1) == rom_exts_to_try.size || __boot_policy_stop,  "Postcondition PROPERTY 7: rom_ext INVALIDATED => we check the next rom_ext if any left and no boot policy instructed stop");
-            __CPROVER_postcondition(__imply(i  < __current_rom_ext, !__boot_failed_called), "Postcondition PROPERTY 8: not last rom_ext fails => fail func not called");
-            __CPROVER_postcondition(__imply(i  == __current_rom_ext, __boot_failed_called), "Postcondition PROPERTY 8: last rom_ext fails => call fail func");
+            __CPROVER_postcondition(__imply(i  < __current_rom_ext, !__boot_failed_called[i]), "Postcondition PROPERTY 8: not last rom_ext fails => fail func not called");
+            __CPROVER_postcondition(__imply(i  == __current_rom_ext, __boot_failed_called[i]), "Postcondition PROPERTY 8: last rom_ext fails => call fail func");
         }
 
     }
