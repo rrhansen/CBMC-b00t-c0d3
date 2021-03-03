@@ -11,7 +11,7 @@ doc/security/specs/secure_boot/index.md
 #include <stdint.h>
 #include <malloc.h>
 
-
+#define __REACHABILITY_CHECK __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 #define MAX_ROM_EXTS 5
 #define RSA_SIZE 96
 
@@ -138,7 +138,7 @@ int final_jump_to_rom_ext(rom_ext_manifest_t __current_rom_ext_manifest) { // Re
     rom_ext_boot_func* rom_ext_entry = (rom_ext_boot_func*)__current_rom_ext_manifest.image_code;
 
     __CPROVER_assert(rom_ext_entry == __current_rom_ext_manifest.image_code, "PROPERTY 6: Correct entry point address.");
-    __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+    __REACHABILITY_CHECK
 
     rom_ext_entry();
     
@@ -157,7 +157,7 @@ void boot_failed(boot_policy_t boot_policy) {
 
 
 void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_t __current_rom_ext_manifest) {
-    __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+    __REACHABILITY_CHECK
     boot_policy.fail_rom_ext_terminated(__current_rom_ext_manifest);
 }
 
@@ -208,7 +208,7 @@ void PROOF_HARNESS(){
 
     for(int i = 0; i < rom_exts_to_try.size; i++){
         if(__validated_rom_exts[i]){ //validated - try to boot from
-            __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+            __REACHABILITY_CHECK
             __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition PROPERTY: 1 rom_ext succesfull validation => valid signature");
             __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value), "Postcondition PROPERTY 2: rom_ext succesfull validation => valid key");
             __CPROVER_postcondition(__rom_ext_called[i], "Postcondition PROPERTY 6: rom_ext succesfull validation => rom ext code inititated");
@@ -217,7 +217,7 @@ void PROOF_HARNESS(){
 
         }
         else{ //invalidated - unsafe to boot from
-            __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+            __REACHABILITY_CHECK
             __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]), "Postcondition PROPERTY 6: (invalid rom _ext and rom_ext code !return) => that rom_ext term func not called");
             __CPROVER_postcondition(!__rom_ext_called[i],  "Postcondition PROPERTY 7: rom_ext INVALIDATED => rom ext code not executed");
             __CPROVER_postcondition(__current_rom_ext > i || (i + 1) == rom_exts_to_try.size || __boot_policy_stop,  "Postcondition PROPERTY 7: rom_ext INVALIDATED => we check the next rom_ext if any left and no boot policy instructed stop");
@@ -226,7 +226,7 @@ void PROOF_HARNESS(){
         }
 
     }
-    __CPROVER_postcondition(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+    __REACHABILITY_CHECK
 }
 
 /*Run Command: 
@@ -247,11 +247,11 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == 3072, "PROPERTY 1: Signature is 3072-bits");
         
         if (!check_rom_ext_manifest(__current_rom_ext_manifest)) {
-            __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+            __REACHABILITY_CHECK
             __CPROVER_assert(!__help_sign_valid(__current_rom_ext_manifest.signature.value), "PROPERTY 1: Stop verification iff signature is invalid");
             continue;
         }
-        __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+        __REACHABILITY_CHECK
         __CPROVER_assert(__help_sign_valid(__current_rom_ext_manifest.signature.value), "PROPERTY 1: Continue verification iff signature is valid");
 
         //Step 2.iii.b
@@ -261,11 +261,11 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
         //Step 2.iii.b
         if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
-            __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+            __REACHABILITY_CHECK
             __CPROVER_assert(!__help_key_valid(rom_ext_pub_key.value), "PROPERTY 2: Stop verification iff key is invalid");
               continue;
         }
-        __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+        __REACHABILITY_CHECK
         __CPROVER_assert(__help_key_valid(rom_ext_pub_key.value), "PROPERTY 2: Continue verification iff key is valid");
 
        
@@ -280,7 +280,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         //Step 2.iii.e
         __validated_rom_exts[i] = 1; //for CBMC
         if (!final_jump_to_rom_ext(__current_rom_ext_manifest)) {
-            __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+            __REACHABILITY_CHECK
 
             //Step 2.iv            
             boot_failed_rom_ext_terminated(boot_policy, __current_rom_ext_manifest);
@@ -296,7 +296,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
     } // End for
 
     //Step 2.iv
-    __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+    __REACHABILITY_CHECK
     boot_failed(boot_policy);
 }
 
