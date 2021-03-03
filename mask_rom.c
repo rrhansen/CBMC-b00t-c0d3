@@ -15,6 +15,18 @@ doc/security/specs/secure_boot/index.md
 #define MAX_ROM_EXTS 5
 #define RSA_SIZE 96
 
+int __current_rom_ext = 0; //for CBMC
+int __rom_ext_called[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
+int __rom_ext_fail_func[MAX_ROM_EXTS] = {0,0,0,0,0}; //for CBMC PROPERTY 6
+int __boot_failed_called[MAX_ROM_EXTS] = {0,0,0,0,0};
+int __validated_rom_exts[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
+int __rom_ext_returned[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
+
+int __boot_policy_stop = 0;
+int __imply(int a, int b){return a ? b : 1;}
+
+
+
 //Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size
 typedef struct signature_t{
     int32_t value[RSA_SIZE];
@@ -117,13 +129,7 @@ void pmp_unlock_rom_ext() {
     //                  Region        Read       Write     Execute     Locked 
 }
 
-int __current_rom_ext = 0; //for CBMC
-int __rom_ext_called[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
-
-
-void __some_entry_func(){ //used for CBMC assume
-  __rom_ext_called[__current_rom_ext] = 1; //for CBMC PROPERTY 6
-} 
+void __some_entry_func(){ __rom_ext_called[__current_rom_ext] = 1; /*for CBMC PROPERTY 6*/} 
 
 int final_jump_to_rom_ext(rom_ext_manifest_t __current_rom_ext_manifest) { // Returns a boolean value.
     __CPROVER_assume(__current_rom_ext_manifest.image_code == &__some_entry_func); //for cbmc
@@ -133,7 +139,10 @@ int final_jump_to_rom_ext(rom_ext_manifest_t __current_rom_ext_manifest) { // Re
 
     __CPROVER_assert(rom_ext_entry == __current_rom_ext_manifest.image_code, "PROPERTY 6: Correct entry point address.");
     __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
+
     rom_ext_entry();
+    
+    __rom_ext_returned[__current_rom_ext] = 1; //for CBMC PROPERTY 6
 
     //if rom_ext returns, we should return false 
     //and execute step 2.iv.
@@ -145,7 +154,7 @@ void boot_failed(boot_policy_t boot_policy) {
 }
 
 
-int __rom_ext_fail_func[MAX_ROM_EXTS] = {0,0,0,0,0}; //for CBMC PROPERTY 6
+
 
 void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_t __current_rom_ext_manifest) {
     __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
@@ -160,10 +169,7 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
     return 0; 
 }
 
-int __boot_failed_called[MAX_ROM_EXTS] = {0,0,0,0,0};
-int __validated_rom_exts[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
-void __func_fail(){ __boot_failed_called[__current_rom_ext] = 1;} //used for CBMC
-void __func_fail_rom_ext(rom_ext_manifest_t _){ __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
+
 
 
 int __help_sign_valid(int* sign){ //used for CBMC assertion + postcondition
@@ -182,9 +188,10 @@ int __help_key_valid(int* key){ //used for CBMC assertion + postcondition
     return 0;
 }
 
-int __boot_policy_stop = 0;
-int __rom_ext_returned[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
-int __imply(int a, int b){return a ? b : 1;}
+void __func_fail(){ __boot_failed_called[__current_rom_ext] = 1;} //used for CBMC
+void __func_fail_rom_ext(rom_ext_manifest_t _){ __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
+
+
 
 /*PROPERTY 1 and 2*/
 void PROOF_HARNESS(){
@@ -273,7 +280,6 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         //Step 2.iii.e
         __validated_rom_exts[i] = 1; //for CBMC
         if (!final_jump_to_rom_ext(__current_rom_ext_manifest)) {
-            __rom_ext_returned[i] = 1; //for CBMC PROPERTY 6
             __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 
             //Step 2.iv            
