@@ -1,6 +1,8 @@
 # b00t-c0d3
 Simplified initial boot code inspired by OpenTitan's secure boot
 
+mask_rom_boot_code contains the boot code without annotations.
+
 The goal is to verify the security of the boot code using CBMC / UPPAAL
 
 ### Verified
