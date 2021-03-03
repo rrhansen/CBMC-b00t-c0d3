@@ -158,7 +158,7 @@ int __boot_failed_rom_ext_terminated_executed = 0;
 
 
 void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_t current_rom_ext_manifest) {
-    __CPROVER_assert(__rom_ext_returned, "PROPERTY 7: Executing Failure When ROM EXT Returns.");
+    __CPROVER_assert(__rom_ext_returned, "PROPERTY 6: Executing Failure When ROM EXT Returns.");
     boot_policy.fail_rom_ext_terminated(current_rom_ext_manifest);
     __boot_failed_rom_ext_terminated_executed = 1;
 }
@@ -215,12 +215,12 @@ void PROOF_HARNESS() {
     if (__rom_ext_returned)
     {
         __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-        __CPROVER_postcondition(__boot_failed_rom_ext_terminated_executed, "PROPERTY 7: If ROM EXT returned, we should have executed failure.");
+        __CPROVER_postcondition(__boot_failed_rom_ext_terminated_executed, "PROPERTY 6: If ROM EXT returned, we should have executed failure.");
     }
     else
     {
         __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-        __CPROVER_postcondition(__boot_failed_rom_ext_terminated_executed == 0, "PROPERTY 7: If ROM EXT did not return, we should not have executed failure.");
+        __CPROVER_postcondition(__boot_failed_rom_ext_terminated_executed == 0, "PROPERTY 6: If ROM EXT did not return, we should not have executed failure.");
     }
 
 
@@ -249,7 +249,6 @@ cbmc mask_rom.c --function PROOF_HARNESS --unwind 100  --unwindset mask_rom_boot
 int __check_one = 0;
 int __check_two = 0;
 int __check_three = 0;
-int __check_four = 0;
 
 
 void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_try) {
