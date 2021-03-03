@@ -9,8 +9,8 @@ The goal is to verify the security of the boot code using CBMC / UPPAAL
 - [ ] Property 3
 - [ ] Property 4
 - [ ] Property 5
-- [ ] Property 6
-- [ ] Property 7
-- [ ] Property 8
+- [x] Property 6
+- [x] Property 7
+- [x] Property 8
 - [ ] Property 9
 - [ ] Property 10

@@ -15,14 +15,15 @@ doc/security/specs/secure_boot/index.md
 #define MAX_ROM_EXTS 5
 #define RSA_SIZE 96
 
-int __current_rom_ext = 0; //for CBMC
+//for CBMC
+int __current_rom_ext = 0; 
+int __boot_policy_stop = 0;
 int __rom_ext_called[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
 int __rom_ext_fail_func[MAX_ROM_EXTS] = {0,0,0,0,0}; //for CBMC PROPERTY 6
 int __boot_failed_called[MAX_ROM_EXTS] = {0,0,0,0,0};
 int __validated_rom_exts[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
 int __rom_ext_returned[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
 
-int __boot_policy_stop = 0;
 int __imply(int a, int b){return a ? b : 1;}
 
 
@@ -204,14 +205,14 @@ void PROOF_HARNESS(){
     
     mask_rom_boot(boot_policy, rom_exts_to_try);
 
-    __CPROVER_postcondition(__current_rom_ext+1 <= rom_exts_to_try.size,  "Postcondition: should never check more rom_ext that there exist");
+    __CPROVER_postcondition(__current_rom_ext+1 <= rom_exts_to_try.size,  "Postcondition: Should never check more rom_ext than there exist");
 
     for(int i = 0; i < rom_exts_to_try.size; i++){
         if(__validated_rom_exts[i]){ //validated - try to boot from
             __REACHABILITY_CHECK
-            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition PROPERTY: 1 rom_ext succesfull validation => valid signature");
-            __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value), "Postcondition PROPERTY 2: rom_ext succesfull validation => valid key");
-            __CPROVER_postcondition(__rom_ext_called[i], "Postcondition PROPERTY 6: rom_ext succesfull validation => rom ext code inititated");
+            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition PROPERTY: rom_ext VALIDATED => valid signature");
+            __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value), "Postcondition PROPERTY 2: rom_ext VALIDATED => valid key");
+            __CPROVER_postcondition(__rom_ext_called[i], "Postcondition PROPERTY 6: rom_ext VALIDATED => rom ext code inititated");
             __CPROVER_postcondition(__imply(__rom_ext_returned[i], __rom_ext_fail_func[i]), "Postcondition PROPERTY 6: (valid rom _ext and rom_ext code return) => that rom_ext term func is called");
             __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]), "Postcondition PROPERTY 6: (valid rom _ext and rom_ext code !return) => that rom_ext term func not called");
 
@@ -221,8 +222,8 @@ void PROOF_HARNESS(){
             __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]), "Postcondition PROPERTY 6: (invalid rom _ext and rom_ext code !return) => that rom_ext term func not called");
             __CPROVER_postcondition(!__rom_ext_called[i],  "Postcondition PROPERTY 7: rom_ext INVALIDATED => rom ext code not executed");
             __CPROVER_postcondition(__current_rom_ext > i || (i + 1) == rom_exts_to_try.size || __boot_policy_stop,  "Postcondition PROPERTY 7: rom_ext INVALIDATED => we check the next rom_ext if any left and no boot policy instructed stop");
-            __CPROVER_postcondition(__imply(i  < __current_rom_ext, !__boot_failed_called[i]), "Postcondition PROPERTY 8: not last rom_ext fails => fail func not called");
-            __CPROVER_postcondition(__imply(i  == __current_rom_ext, __boot_failed_called[i]), "Postcondition PROPERTY 8: last rom_ext fails => call fail func");
+            __CPROVER_postcondition(__imply(i  < __current_rom_ext, !__boot_failed_called[i]), "Postcondition PROPERTY 8: A rom_ext (not the last one) fails => fail func is not called");
+            __CPROVER_postcondition(__imply(i  == __current_rom_ext, __boot_failed_called[i]), "Postcondition PROPERTY 8: Last rom_ext fail => fail func has been called");
         }
 
     }
@@ -234,9 +235,9 @@ cbmc mask_rom.c --function PROOF_HARNESS --unwind 100  --unwindset mask_rom_boot
 */
 
 void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_try ){
-    __CPROVER_precondition(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0, "Precondition: assumes MAX_ROM_EXTS >= rom_exts > 0");
-    __CPROVER_precondition(boot_policy.fail == &__func_fail, "Precondition: assumes boot_policy.fail has ok address");
-    __CPROVER_precondition(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext, "Precondition: boot_policy.fail_rom_ext_terminated has ok address");
+    __CPROVER_precondition(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0, "Precondition: Assumes MAX_ROM_EXTS >= rom_exts > 0");
+    __CPROVER_precondition(boot_policy.fail == &__func_fail, "Precondition: Assumes boot_policy.fail has ok address");
+    __CPROVER_precondition(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext, "Precondition: Assumes boot_policy.fail_rom_ext_terminated has ok address");
 
     //Måske step 2.iii
     for (int i = 0; i < rom_exts_to_try.size; i++){
@@ -273,25 +274,19 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         if (!verify_rom_ext_signature(rom_ext_pub_key, __current_rom_ext_manifest)) {
             continue;
         }
+
+        __validated_rom_exts[i] = 1; //for CBMC
         
         //Step 2.iii.d
         pmp_unlock_rom_ext();
         
         //Step 2.iii.e
-        __validated_rom_exts[i] = 1; //for CBMC
         if (!final_jump_to_rom_ext(__current_rom_ext_manifest)) {
             __REACHABILITY_CHECK
 
             //Step 2.iv            
             boot_failed_rom_ext_terminated(boot_policy, __current_rom_ext_manifest);
-            int n;
-            switch (n) { //nondeterministic model the boot_failed_rom_ext_terminated possible behavior
-            case 0:
-                __boot_policy_stop = 1;
-                return;
-            default:
-                break;
-            }
+            __boot_policy_stop = 1;
         }
     } // End for
 
