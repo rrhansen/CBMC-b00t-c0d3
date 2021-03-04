@@ -194,7 +194,6 @@ void __func_fail_rom_ext(rom_ext_manifest_t _){ __rom_ext_fail_func[__current_ro
 
 
 
-/*PROPERTY 1 and 2*/
 void PROOF_HARNESS(){
     boot_policy_t boot_policy;// = read_boot_policy();
     rom_exts_manifests_t rom_exts_to_try;// = rom_ext_manifests_to_try(boot_policy);
