@@ -195,8 +195,8 @@ void __func_fail_rom_ext(rom_ext_manifest_t _){ __rom_ext_fail_func[__current_ro
 
 
 void PROOF_HARNESS(){
-    boot_policy_t boot_policy;// = read_boot_policy();
-    rom_exts_manifests_t rom_exts_to_try;// = rom_ext_manifests_to_try(boot_policy);
+    boot_policy_t boot_policy = read_boot_policy();
+    rom_exts_manifests_t rom_exts_to_try = rom_ext_manifests_to_try(boot_policy);
 
     __CPROVER_assume(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0);
     __CPROVER_assume(boot_policy.fail == &__func_fail);
@@ -209,7 +209,7 @@ void PROOF_HARNESS(){
     for(int i = 0; i < rom_exts_to_try.size; i++){
         if(__validated_rom_exts[i]){ //validated - try to boot from
             __REACHABILITY_CHECK
-            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition PROPERTY: rom_ext VALIDATED => valid signature");
+            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value), "Postcondition PROPERTY 1: rom_ext VALIDATED => valid signature");
             __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value), "Postcondition PROPERTY 2: rom_ext VALIDATED => valid key");
             __CPROVER_postcondition(__rom_ext_called[i], "Postcondition PROPERTY 6: rom_ext VALIDATED => rom ext code inititated");
             __CPROVER_postcondition(__imply(__rom_ext_returned[i], __rom_ext_fail_func[i]), "Postcondition PROPERTY 6: (valid rom _ext and rom_ext code return) => that rom_ext term func is called");
