@@ -286,6 +286,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
             //Step 2.iv            
             boot_failed_rom_ext_terminated(boot_policy, __current_rom_ext_manifest);
             __boot_policy_stop = 1;
+            return;
         }
     } // End for
 
