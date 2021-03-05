@@ -213,7 +213,9 @@ void PROOF_HARNESS(){
     __CPROVER_assume(boot_policy.fail == &__func_fail);
     __CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
     
+
     mask_rom_boot(boot_policy, rom_exts_to_try);
+
 
     __CPROVER_postcondition(__current_rom_ext+1 <= rom_exts_to_try.size,  
     "Postcondition: Should never check more rom_ext than there exist");
@@ -240,6 +242,7 @@ void PROOF_HARNESS(){
         }
         else{ //invalidated - unsafe to boot from
             __REACHABILITY_CHECK
+
             __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]), 
             "Postcondition PROPERTY 6: (invalid rom _ext and rom_ext code !return) => that rom_ext term func not called");
             
