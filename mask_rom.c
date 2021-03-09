@@ -10,6 +10,8 @@ doc/security/specs/secure_boot/index.md
 #include <string.h>
 #include <stdint.h>
 #include <malloc.h>
+#include <stdlib.h>
+#include "sha2-256.h"
 
 #define __REACHABILITY_CHECK __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 #define MAX_ROM_EXTS 5
@@ -50,6 +52,7 @@ typedef struct rom_ext_manifest_t{
     
     //public part of signature key
     pub_key_t pub_signature_key;
+    uint32_t image_length;
     char* image_code;
 } rom_ext_manifest_t;
 
@@ -117,14 +120,17 @@ extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key) //assumed behavior beh
 } 
 
 
-extern char* HASH(char* message);
+extern char* HASH(char* message, int size){
+  return sha256(message, size);
+}
 
 
 extern int RSA_VERIFY(pub_key_t pub_key, char* message, int32_t* signature);
 
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest) {
-    return RSA_VERIFY(rom_ext_pub_key, HASH(manifest.image_code), manifest.signature.value); //0 or 1
+
+    return RSA_VERIFY(rom_ext_pub_key, HASH(manifest.image_code, manifest.image_length), manifest.signature.value); //0 or 1
 }
 
 
@@ -204,7 +210,10 @@ int __help_key_valid(int* key){ //used for CBMC assertion + postcondition
 void __func_fail(){ __boot_failed_called[__current_rom_ext] = 1;} //used for CBMC
 void __func_fail_rom_ext(rom_ext_manifest_t _){ __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
 
-
+/*
+  BUGS:
+    Linje 227 conflicter med 151
+*/
 void PROOF_HARNESS(){
     boot_policy_t boot_policy = read_boot_policy();
     rom_exts_manifests_t rom_exts_to_try = rom_ext_manifests_to_try(boot_policy);
@@ -213,6 +222,10 @@ void PROOF_HARNESS(){
     __CPROVER_assume(boot_policy.fail == &__func_fail);
     __CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
     
+    for(int i = 0; i < rom_exts_to_try.size; i++){
+      __CPROVER_assume(10 > rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
+      rom_exts_to_try.rom_exts_mfs[i].image_code = malloc(sizeof(char) * rom_exts_to_try.rom_exts_mfs[i].image_length);
+    }
 
     mask_rom_boot(boot_policy, rom_exts_to_try);
 
@@ -265,7 +278,7 @@ void PROOF_HARNESS(){
 }
 
 /*Run Command: 
-cbmc mask_rom.c --function PROOF_HARNESS --unwind 100  --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c sha2-256.c --function PROOF_HARNESS --unwind 100 --unwindset sha256_update.0:10 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 */
 
 
@@ -327,9 +340,10 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
        
         //Step 2.iii.b
         if (!verify_rom_ext_signature(rom_ext_pub_key, __current_rom_ext_manifest)) {
+            __REACHABILITY_CHECK
             continue;
         }
-
+        __REACHABILITY_CHECK
         __validated_rom_exts[i] = 1; //for CBMC
         
         //Step 2.iii.d
