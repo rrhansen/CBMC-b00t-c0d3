@@ -30,8 +30,7 @@ int __imply(int a, int b) { return a ? b : 1; }
 //Represents a pmp region
 typedef struct PMP_region_t {
     int identifier;
-    int active;
-
+   
     //Locked, Read, Write, Execute
     int R;
     int W;
@@ -46,6 +45,7 @@ typedef struct __PMP_regions_t {
     PMP_region_t pmp_regions[PMP_REGIONS];
 } __PMP_regions_t;
 
+//The configured PMP regions for each rom ext.
 __PMP_regions_t __rom_ext_pmp_region[MAX_ROM_EXTS];
 
 //Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size
@@ -155,6 +155,8 @@ void pmp_unlock_rom_ext() {
     //Read, Execute, Locked the address space of the ROM extension image
     WRITE_PMP_REGION(       0,           1,          0,          1,         1);
     //                  Region        Read       Write     Execute     Locked 
+    __register_pmp_region(__current_rom_ext, 0, 1, 0, 1, 1);
+    __REACHABILITY_CHECK
 }
 
 
@@ -162,16 +164,17 @@ void enable_memory_protection() {
     //Apply PMP region 15 to cover entire flash
     WRITE_PMP_REGION(       15,          1,          0,          0,         1);
     //                  Region        Read       Write     Execute     Locked 
+
+    __register_pmp_region(-1, 15, 1, 0, 0, 1);
+    __REACHABILITY_CHECK
 }
 
 
-void __register_pmp_region_CBMC(int rom_ext, int pmp_id, int active, int r, int w, int e, int l){
+void __register_pmp_region(int rom_ext, int pmp_id, int r, int w, int e, int l){
     if (rom_ext == -1) {
         //register PMP region for all rom exts.
         for (int i = 0; i < MAX_ROM_EXTS; i++) {
             __rom_ext_pmp_region[i].pmp_regions[pmp_id].identifier = pmp_id;
-            __rom_ext_pmp_region[i].pmp_regions[pmp_id].active = 1;
-
             __rom_ext_pmp_region[i].pmp_regions[pmp_id].R = r;
             __rom_ext_pmp_region[i].pmp_regions[pmp_id].W = w;
             __rom_ext_pmp_region[i].pmp_regions[pmp_id].E = e;
@@ -180,8 +183,6 @@ void __register_pmp_region_CBMC(int rom_ext, int pmp_id, int active, int r, int 
     }
     else {
         __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].identifier = pmp_id;
-        __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].active = 1;
-
         __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].R = r;
         __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].W = w;
         __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].E = e;
@@ -253,13 +254,12 @@ int __help_key_valid(int* key) { //used for CBMC assertion + postcondition
 }
 
 
-int __help_check_pmp_region(int rom_ext, int pmp_id, int active, int r, int w, int e, int l) {
+int __help_check_pmp_region(int rom_ext, int pmp_id, int r, int w, int e, int l) {
     if (rom_ext == -1) {
         //When we need to check a PMP region for all rom exts
         for (int i = 0; i < MAX_ROM_EXTS; i++) {
             // If something is wrong return 0
-            if (__rom_ext_pmp_region[i].pmp_regions[pmp_id].active != active ||
-                __rom_ext_pmp_region[i].pmp_regions[pmp_id].R != r           ||
+            if (__rom_ext_pmp_region[i].pmp_regions[pmp_id].R != r           ||
                 __rom_ext_pmp_region[i].pmp_regions[pmp_id].W != w           ||
                 __rom_ext_pmp_region[i].pmp_regions[pmp_id].E != e           ||
                 __rom_ext_pmp_region[i].pmp_regions[pmp_id].L != l)
@@ -268,8 +268,7 @@ int __help_check_pmp_region(int rom_ext, int pmp_id, int active, int r, int w, i
         return 1;
     }
     else {
-        return __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].active == active &&
-            __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].R == r &&
+        return __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].R == r &&
             __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].W == w &&
             __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].E == e &&
             __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].L == l;
@@ -278,9 +277,13 @@ int __help_check_pmp_region(int rom_ext, int pmp_id, int active, int r, int w, i
 
 
 int __help_all_pmp_inactive(){
+    //Inactive if all fields are 0.
     for (int i = 0; i < MAX_ROM_EXTS; i++) {
         for (int j = 0; j < PMP_REGIONS; j++) {
-            if (__rom_ext_pmp_region[i].pmp_regions[j].active)
+            if (__rom_ext_pmp_region[i].pmp_regions[j].R != 0 ||
+                __rom_ext_pmp_region[i].pmp_regions[j].W != 0 ||
+                __rom_ext_pmp_region[i].pmp_regions[j].E != 0 ||
+                __rom_ext_pmp_region[i].pmp_regions[j].L != 0)
                 return 0;
         }
     }
@@ -326,11 +329,11 @@ void PROOF_HARNESS() {
             __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]),
             "Postcondition PROPERTY 6: (valid rom _ext and rom_ext code !return) => that rom_ext term func not called");
 
-            __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 1, 0, 0, 1),
-            "Postcondition PROPERTY 9: PMP region 15 should be active, R, and L, when rom_ext was validated.");
+            __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
+            "Postcondition PROPERTY 9: PMP region 15 should be R and L, when rom_ext was validated.");
 
-            __CPROVER_assert(__help_check_pmp_region(i, 0, 1, 1, 0, 1, 1),
-            "Postcondition PROPERTY 10: If rom_ext was valided, then PMP region 0 should be active, R, E, and L.");
+            __CPROVER_assert(__help_check_pmp_region(i, 0, 1, 0, 1, 1),
+            "Postcondition PROPERTY 10: If rom_ext was valided, then PMP region 0 should be R, E, and L.");
             
         }
         else { //invalidated - unsafe to boot from
@@ -351,12 +354,11 @@ void PROOF_HARNESS() {
             __CPROVER_postcondition(__imply(i == __current_rom_ext, __boot_failed_called[i]),
             "Postcondition PROPERTY 8: Last rom_ext fail => fail func has been called");
 
-            __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 1, 0, 0, 1),
-            "Postcondition PROPERTY 9: PMP region 15 should be active, R, and L. Even if rom_ext was invalidated.");
+            __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
+            "Postcondition PROPERTY 9: PMP region 15 should be R and L. Even if rom_ext was invalidated.");
 
-            //PROOF_HARNESS.assertion.6
-            __CPROVER_assert(__help_check_pmp_region(i, 0, 0, 0, 0, 0, 0),
-            "Postcondition PROPERTY 10: If rom_ext was invalid, PMP region 0 should not be active, R, E, W, and L.");
+            __CPROVER_assert(__help_check_pmp_region(i, 0, 0, 0, 0, 0),
+            "Postcondition PROPERTY 10: If rom_ext was invalid, PMP region 0 should not be R, E, W, and L.");
         }
 
     }
@@ -381,16 +383,16 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
     //All pmp regions should be inactive at this point
     __CPROVER_precondition(__help_all_pmp_inactive(),
-    "Precondition PROPERTY 9: All PMP regions should be inactive at beginning of mask_rom.");
+    "Precondition PROPERTY 9: All PMP regions should be unset at beginning of mask_rom.");
 
-    enable_memory_protection();
-    __register_pmp_region_CBMC(-1, 15, 1, 1, 0, 0, 1);
-    
-    __CPROVER_assert(__help_check_pmp_region(-1, 15, 1, 1, 0, 0, 1),
-    "PROPERTY 9: PMP region 15 should be active, R, and L.");
+    enable_memory_protection();   
 
     //Måske step 2.iii
     for (int i = 0; i < rom_exts_to_try.size; i++) {
+
+        __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
+        "PROPERTY 9: PMP region 15 should be R and L.");
+
         __current_rom_ext = i;
         rom_ext_manifest_t __current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
 
@@ -434,7 +436,6 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         __CPROVER_assert(__help_key_valid(rom_ext_pub_key.value),
         "PROPERTY 2: Continue verification iff key is valid");
 
-
         //Step 2.iii.b
         if (!verify_rom_ext_signature(rom_ext_pub_key, __current_rom_ext_manifest)) {
             continue;
@@ -444,10 +445,9 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
         //Step 2.iii.d
         pmp_unlock_rom_ext();
-        __register_pmp_region_CBMC(i, 0, 1, 1, 0, 1, 1);
-        
-        __CPROVER_assert(__help_check_pmp_region(i, 0, 1, 1, 0, 1, 1),
-        "PROPERTY 10: PMP region 0 should be active, R, E, and L.");
+                
+        __CPROVER_assert(__help_check_pmp_region(i, 0, 1, 0, 1, 1),
+        "PROPERTY 10: PMP region 0 should be R, E, and L.");
 
         //Step 2.iii.e
         if (!final_jump_to_rom_ext(__current_rom_ext_manifest)) {
