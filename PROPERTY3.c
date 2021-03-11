@@ -15,4 +15,9 @@ void PROOF_HARNESS_PROP3(){
 /*
 PROPERTY 3:
 cbmc mask_rom.c sha2-256.c PROPERTY3.c --function PROOF_HARNESS_PROP3 --unwind 100 --unwindset sha256_update.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+
+__LIBRARY_MODE 1
+__SIMPLE_HASH  0
+__SIMPLE_RSA   1
+
 */
