@@ -12,35 +12,35 @@ doc/security/specs/secure_boot/index.md
 
 #define __LIBRARY_MODE    0 //Used when verifying PROPERTY 3
 #define __SIMPLE_HASH     1 //if 1 -> should be verified without sha file
-#define __SIMPLE_RSA      0
+#define __SIMPLE_RSA      1
 
 
 //for CBMC
-int __current_rom_ext = 0; 
+int __current_rom_ext = 0;
 int __boot_policy_stop = 0;
-int __rom_ext_called[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
-int __rom_ext_fail_func[MAX_ROM_EXTS] = {0,0,0,0,0}; //for CBMC PROPERTY 6
-int __boot_failed_called[MAX_ROM_EXTS] = {0,0,0,0,0};
-int __validated_rom_exts[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
-int __rom_ext_returned[MAX_ROM_EXTS] = {0,0,0,0,0}; //used for CBMC postcondition
-
-int __imply(int a, int b){return a ? b : 1;}
-
+int __rom_ext_called[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //used for CBMC postcondition
+int __rom_ext_fail_func[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //for CBMC PROPERTY 6
+int __boot_failed_called[MAX_ROM_EXTS] = { 0,0,0,0,0 };
+int __validated_rom_exts[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //used for CBMC postcondition
+int __rom_ext_returned[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //used for CBMC postcondition
+int __imply(int a, int b) { return a ? b : 1; }
 
 
+//The configured PMP regions for each rom ext.
+__PMP_regions_t __rom_ext_pmp_region[MAX_ROM_EXTS];
 
 
 typedef void(rom_ext_boot_func)(void); // Function type used to define function pointer to the entry of the ROM_EXT stage.
 
 
-extern int* READ_FLASH(int start, int end){
+extern int* READ_FLASH(int start, int end) {
     return malloc(end - start); //for CBMC to model reading
 };
 
 
-boot_policy_t read_boot_policy()
-{
-    int* data = READ_FLASH(0, sizeof(boot_policy_t)); 
+boot_policy_t read_boot_policy(){
+#if !__LIBRARY_MODE
+    int* data = READ_FLASH(0, sizeof(boot_policy_t));
 
     boot_policy_t boot_policy;
 
@@ -49,6 +49,7 @@ boot_policy_t read_boot_policy()
     memcpy(&boot_policy.fail, data + 2, sizeof(boot_policy.fail));
 
     return boot_policy;
+#endif
 }
 
 
@@ -60,14 +61,15 @@ pub_key_t read_pub_key(rom_ext_manifest_t __current_rom_ext_manifest) {
 }
 
 
-extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key) //assumed behavior behavior of check func
-{
-    for(int i = 0; i < RSA_SIZE; i++){
-        if(rom_ext_pub_key.value[i] != 0)
+extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
+#if !__LIBRARY_MODE
+    for (int i = 0; i < RSA_SIZE; i++) {
+        if (rom_ext_pub_key.value[i] != 0)
             return 1; // If the key[i] != 0 for one i, the key is valid.
     }
     return 0; // returns a boolean value
-} 
+#endif
+}
 
 #if !__SIMPLE_HASH
 
@@ -122,13 +124,52 @@ extern void WRITE_PMP_REGION(uint8_t reg, uint8_t r, uint8_t w, uint8_t e, uint8
 
 
 void pmp_unlock_rom_ext() {
+#if !__LIBRARY_MODE
     //Read, Execute, Locked the address space of the ROM extension image
-    WRITE_PMP_REGION(       0,          1,          0,          1,          1);
+    WRITE_PMP_REGION(       0,           1,          0,          1,         1);
     //                  Region        Read       Write     Execute     Locked 
+    __register_pmp_region(__current_rom_ext, 0, 1, 0, 1, 1);
+    __REACHABILITY_CHECK
+#endif
 }
 
 
-void __some_entry_func(){ __rom_ext_called[__current_rom_ext] = 1; /*for CBMC PROPERTY 6*/} 
+void enable_memory_protection() {
+#if !__LIBRARY_MODE
+    //Apply PMP region 15 to cover entire flash
+    WRITE_PMP_REGION(       15,          1,          0,          0,         1);
+    //                  Region        Read       Write     Execute     Locked 
+
+    __register_pmp_region(-1, 15, 1, 0, 0, 1);
+    __REACHABILITY_CHECK
+#endif
+}
+
+
+void __register_pmp_region(int rom_ext, int pmp_id, int r, int w, int e, int l){
+#if !__LIBRARY_MODE
+    if (rom_ext == -1) {
+        //register PMP region for all rom exts.
+        for (int i = 0; i < MAX_ROM_EXTS; i++) {
+            __rom_ext_pmp_region[i].pmp_regions[pmp_id].identifier = pmp_id;
+            __rom_ext_pmp_region[i].pmp_regions[pmp_id].R = r;
+            __rom_ext_pmp_region[i].pmp_regions[pmp_id].W = w;
+            __rom_ext_pmp_region[i].pmp_regions[pmp_id].E = e;
+            __rom_ext_pmp_region[i].pmp_regions[pmp_id].L = l;
+        }
+    }
+    else {
+        __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].identifier = pmp_id;
+        __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].R = r;
+        __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].W = w;
+        __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].E = e;
+        __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].L = l;
+    }
+#endif
+}
+
+
+void __some_entry_func() { __rom_ext_called[__current_rom_ext] = 1; /*for CBMC PROPERTY 6*/ }
 
 
 int final_jump_to_rom_ext(rom_ext_manifest_t __current_rom_ext_manifest) { // Returns a boolean value.
@@ -138,13 +179,13 @@ int final_jump_to_rom_ext(rom_ext_manifest_t __current_rom_ext_manifest) { // Re
     //Execute rom ext code step 2.iii.e
     rom_ext_boot_func* rom_ext_entry = (rom_ext_boot_func*)__current_rom_ext_manifest.image_code;
 
-    __CPROVER_assert(rom_ext_entry == __current_rom_ext_manifest.image_code, 
+    __CPROVER_assert(rom_ext_entry == __current_rom_ext_manifest.image_code,
     "PROPERTY 6: Correct entry point address.");
-    
+
     __REACHABILITY_CHECK
 
     rom_ext_entry();
-    
+
     __rom_ext_returned[__current_rom_ext] = 1; //for CBMC PROPERTY 6
 
     //if rom_ext returns, we should return false 
@@ -169,36 +210,84 @@ void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_
 
 
 int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
-    for(int i = 0; i < RSA_SIZE; i++){
-        if(manifest.signature.value[i] != 0)
+#if !__LIBRARY_MODE
+    for (int i = 0; i < RSA_SIZE; i++) {
+        if (manifest.signature.value[i] != 0)
             return 1; // If the signature[i] != 0 for one i, the manifest is valid.
     }
-    return 0; 
+    return 0;
+#endif
 }
 
 
-int __help_sign_valid(int* sign){ //used for CBMC assertion + postcondition
-    for(int i = 0; i < RSA_SIZE; i++){
-        if(sign[i] != 0)
+int __help_sign_valid(int* sign) { //used for CBMC assertion + postcondition
+#if !__LIBRARY_MODE
+    for (int i = 0; i < RSA_SIZE; i++) {
+        if (sign[i] != 0)
             return 1;
     }
     return 0;
+#endif
 }
 
 
-int __help_key_valid(int* key){ //used for CBMC assertion + postcondition
-    for(int i = 0; i < RSA_SIZE; i++){
-        if(key[i] != 0)
+int __help_key_valid(int* key) { //used for CBMC assertion + postcondition
+#if !__LIBRARY_MODE
+    for (int i = 0; i < RSA_SIZE; i++) {
+        if (key[i] != 0)
             return 1;
     }
     return 0;
+#endif
 }
 
 
-void __func_fail(){ __boot_failed_called[__current_rom_ext] = 1;} //used for CBMC
-void __func_fail_rom_ext(rom_ext_manifest_t _){ __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
+int __help_check_pmp_region(int rom_ext, int pmp_id, int r, int w, int e, int l) {
+#if !__LIBRARY_MODE
+    if (rom_ext == -1) {
+        //When we need to check a PMP region for all rom exts
+        for (int i = 0; i < MAX_ROM_EXTS; i++) {
+            // If something is wrong return 0
+            if (__rom_ext_pmp_region[i].pmp_regions[pmp_id].R != r           ||
+                __rom_ext_pmp_region[i].pmp_regions[pmp_id].W != w           ||
+                __rom_ext_pmp_region[i].pmp_regions[pmp_id].E != e           ||
+                __rom_ext_pmp_region[i].pmp_regions[pmp_id].L != l)
+                return 0;
+        }
+        return 1;
+    }
+    else {
+        return __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].R == r &&
+            __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].W == w &&
+            __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].E == e &&
+            __rom_ext_pmp_region[rom_ext].pmp_regions[pmp_id].L == l;
+    }
+#endif
+}
 
-void PROOF_HARNESS(){
+
+int __help_all_pmp_inactive(){
+#if !__LIBRARY_MODE
+    //Inactive if all fields are 0.
+    for (int i = 0; i < MAX_ROM_EXTS; i++) {
+        for (int j = 0; j < PMP_REGIONS; j++) {
+            if (__rom_ext_pmp_region[i].pmp_regions[j].R != 0 ||
+                __rom_ext_pmp_region[i].pmp_regions[j].W != 0 ||
+                __rom_ext_pmp_region[i].pmp_regions[j].E != 0 ||
+                __rom_ext_pmp_region[i].pmp_regions[j].L != 0)
+                return 0;
+        }
+    }
+    return 1;
+#endif
+}
+
+
+void __func_fail() { __boot_failed_called[__current_rom_ext] = 1; } //used for CBMC
+void __func_fail_rom_ext(rom_ext_manifest_t _) { __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
+
+
+void PROOF_HARNESS() {
 #if !__LIBRARY_MODE
     boot_policy_t boot_policy = read_boot_policy();
     rom_exts_manifests_t rom_exts_to_try = rom_ext_manifests_to_try(boot_policy);
@@ -215,59 +304,74 @@ void PROOF_HARNESS(){
     mask_rom_boot(boot_policy, rom_exts_to_try);
 
 
-    __CPROVER_postcondition(__current_rom_ext+1 <= rom_exts_to_try.size,  
+    __CPROVER_postcondition(__current_rom_ext + 1 <= rom_exts_to_try.size,
     "Postcondition: Should never check more rom_ext than there exist");
 
-    for(int i = 0; i < rom_exts_to_try.size; i++){
-        if(__validated_rom_exts[i]){ //validated - try to boot from
+    for (int i = 0; i < rom_exts_to_try.size; i++) {
+        if (__validated_rom_exts[i]) { //validated - try to boot from
             __REACHABILITY_CHECK
 
             __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value),
             "Postcondition PROPERTY 1: rom_ext VALIDATED => valid signature");
-            
+
             __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value),
             "Postcondition PROPERTY 2: rom_ext VALIDATED => valid key");
-            
+
             __CPROVER_postcondition(__rom_ext_called[i],
             "Postcondition PROPERTY 6: rom_ext VALIDATED => rom ext code inititated");
-            
-            __CPROVER_postcondition(__imply(__rom_ext_returned[i], __rom_ext_fail_func[i]), 
+
+            __CPROVER_postcondition(__imply(__rom_ext_returned[i], __rom_ext_fail_func[i]),
             "Postcondition PROPERTY 6: (valid rom _ext and rom_ext code return) => that rom_ext term func is called");
-            
+
             __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]),
             "Postcondition PROPERTY 6: (valid rom _ext and rom_ext code !return) => that rom_ext term func not called");
 
+            __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
+            "Postcondition PROPERTY 9: PMP region 15 should be R and L, when rom_ext was validated.");
+
+            __CPROVER_assert(__help_check_pmp_region(i, 0, 1, 0, 1, 1),
+            "Postcondition PROPERTY 10: If rom_ext was valided, then PMP region 0 should be R, E, and L.");
+            
         }
-        else{ //invalidated - unsafe to boot from
+        else { //invalidated - unsafe to boot from
             __REACHABILITY_CHECK
 
-            __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]), 
+            __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]),
             "Postcondition PROPERTY 6: (invalid rom _ext and rom_ext code !return) => that rom_ext term func not called");
-            
-            __CPROVER_postcondition(!__rom_ext_called[i],  
+
+            __CPROVER_postcondition(!__rom_ext_called[i],
             "Postcondition PROPERTY 7: rom_ext INVALIDATED => rom ext code not executed");
-            
-            __CPROVER_postcondition(__current_rom_ext > i || (i + 1) == rom_exts_to_try.size || __boot_policy_stop,  
+
+            __CPROVER_postcondition(__current_rom_ext > i || (i + 1) == rom_exts_to_try.size || __boot_policy_stop,
             "Postcondition PROPERTY 7: rom_ext INVALIDATED => we check the next rom_ext if any left and no boot policy instructed stop");
-            
-            __CPROVER_postcondition(__imply(i  < __current_rom_ext, !__boot_failed_called[i]), 
+
+            __CPROVER_postcondition(__imply(i < __current_rom_ext, !__boot_failed_called[i]),
             "Postcondition PROPERTY 8: A rom_ext (not the last one) fails => fail func is not called");
-            
-            __CPROVER_postcondition(__imply(i  == __current_rom_ext, __boot_failed_called[i]), 
+
+            __CPROVER_postcondition(__imply(i == __current_rom_ext, __boot_failed_called[i]),
             "Postcondition PROPERTY 8: Last rom_ext fail => fail func has been called");
 
+            __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
+            "Postcondition PROPERTY 9: PMP region 15 should be R and L. Even if rom_ext was invalidated.");
+
+            __CPROVER_assert(__help_check_pmp_region(i, 0, 0, 0, 0, 0),
+            "Postcondition PROPERTY 10: If rom_ext was invalid, PMP region 0 should not be R, E, W, and L.");
         }
 
     }
     __REACHABILITY_CHECK
-#endif __LIBRARY_MODE
+#endif
 }
 
-/*Run Command: 
-big boi
-cbmc mask_rom.c sha2-256.c --function PROOF_HARNESS --unwind 100 --unwindset sha256_update.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
-cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+/*
+PROPERTY 1, 2, 6, 7, 8, 9, 10
 
+__LIBRARY_MODE 0
+__SIMPLE_HASH  1
+__SIMPLE_RSA   1
+
+Run Command.
+cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 */
 
 
@@ -275,59 +379,68 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 #if !__LIBRARY_MODE
     __CPROVER_precondition(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0, 
     "Precondition: Assumes MAX_ROM_EXTS >= rom_exts > 0");
-    
-    __CPROVER_precondition(boot_policy.fail == &__func_fail, 
+
+    __CPROVER_precondition(boot_policy.fail == &__func_fail,
     "Precondition: Assumes boot_policy.fail has ok address");
-    
-    __CPROVER_precondition(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext, 
+
+    __CPROVER_precondition(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext,
     "Precondition: Assumes boot_policy.fail_rom_ext_terminated has ok address");
 
+    //All pmp regions should be inactive at this point
+    __CPROVER_precondition(__help_all_pmp_inactive(),
+    "Precondition PROPERTY 9: All PMP regions should be unset at beginning of mask_rom.");
+
+    enable_memory_protection();   
+
     //Måske step 2.iii
-    for (int i = 0; i < rom_exts_to_try.size; i++){
+    for (int i = 0; i < rom_exts_to_try.size; i++) {
+
+        __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
+        "PROPERTY 9: PMP region 15 should be R and L.");
+
         __current_rom_ext = i;
         rom_ext_manifest_t __current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
 
         signature_t signature = __current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
-        
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == 3072, 
+
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == 3072,
         "PROPERTY 1: Signature is 3072-bits");
-        
+
         if (!check_rom_ext_manifest(__current_rom_ext_manifest)) {
             __REACHABILITY_CHECK
-            
-            __CPROVER_assert(!__help_sign_valid(__current_rom_ext_manifest.signature.value), 
+
+            __CPROVER_assert(!__help_sign_valid(__current_rom_ext_manifest.signature.value),
             "PROPERTY 1: Stop verification iff signature is invalid");
-            
+
             continue;
         }
 
         __REACHABILITY_CHECK
 
-        __CPROVER_assert(__help_sign_valid(__current_rom_ext_manifest.signature.value), 
+        __CPROVER_assert(__help_sign_valid(__current_rom_ext_manifest.signature.value),
         "PROPERTY 1: Continue verification iff signature is valid");
 
         //Step 2.iii.b
-        pub_key_t rom_ext_pub_key = read_pub_key(__current_rom_ext_manifest); 
-        
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.value) * 8 == 3072, 
+        pub_key_t rom_ext_pub_key = read_pub_key(__current_rom_ext_manifest);
+
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.value) * 8 == 3072,
         "PROPERTY 2: Public key is 3072-bits");
 
         //Step 2.iii.b
         if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
             __REACHABILITY_CHECK
 
-            __CPROVER_assert(!__help_key_valid(rom_ext_pub_key.value), 
+            __CPROVER_assert(!__help_key_valid(rom_ext_pub_key.value),
             "PROPERTY 2: Stop verification iff key is invalid");
 
             continue;
         }
 
         __REACHABILITY_CHECK
-        
-        __CPROVER_assert(__help_key_valid(rom_ext_pub_key.value), 
+
+        __CPROVER_assert(__help_key_valid(rom_ext_pub_key.value),
         "PROPERTY 2: Continue verification iff key is valid");
 
-      
         //Step 2.iii.b
         if (!verify_rom_ext_signature(rom_ext_pub_key, __current_rom_ext_manifest)) {
             __REACHABILITY_CHECK
@@ -335,10 +448,13 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         }
         __REACHABILITY_CHECK
         __validated_rom_exts[i] = 1; //for CBMC
-        
+
         //Step 2.iii.d
         pmp_unlock_rom_ext();
-        
+                
+        __CPROVER_assert(__help_check_pmp_region(i, 0, 1, 0, 1, 1),
+        "PROPERTY 10: PMP region 0 should be R, E, and L.");
+
         //Step 2.iii.e
         if (!final_jump_to_rom_ext(__current_rom_ext_manifest)) {
             __REACHABILITY_CHECK
