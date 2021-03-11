@@ -111,7 +111,7 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
       manifest.image_length
     );
 
-    hash = HASH(message, manifest.image_length);
+    hash = HASH(message, bytes);
     __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, "PROPERTY 3: Hash is 256 bits");
 #endif
     
