@@ -10,8 +10,8 @@ doc/security/specs/secure_boot/index.md
 #include "sha2-256.h"
 #include "mask_rom.h"
 
-#define __LIBRARY_MODE    0 //Used when verifying PROPERTY 3
-#define __SIMPLE_HASH     1 //if 1 -> should be verified without sha file
+#define __LIBRARY_MODE    1 //Used when verifying PROPERTY 3
+#define __SIMPLE_HASH     0 //if 1 -> should be verified without sha file
 #define __SIMPLE_RSA      1
 
 
@@ -111,7 +111,7 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
       manifest.image_length
     );
 
-    hash = HASH(manifest.image_code, manifest.image_length);
+    hash = HASH(message, manifest.image_length);
     __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, "PROPERTY 3: Hash is 256 bits");
 #endif
     
