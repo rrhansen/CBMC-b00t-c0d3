@@ -10,8 +10,8 @@ doc/security/specs/secure_boot/index.md
 #include "sha2-256.h"
 #include "mask_rom.h"
 
-#define __LIBRARY_MODE    1 //Used when verifying PROPERTY 3
-#define __SIMPLE_HASH     0
+#define __LIBRARY_MODE    0 //Used when verifying PROPERTY 3
+#define __SIMPLE_HASH     1 //if 1 -> should be verified without sha file
 #define __SIMPLE_RSA      0
 
 
@@ -69,6 +69,7 @@ extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key) //assumed behavior beh
     return 0; // returns a boolean value
 } 
 
+#if !__SIMPLE_HASH
 
 extern char* HASH(char* message, int size){
   char* hash = sha256(message, size);
@@ -78,6 +79,7 @@ extern char* HASH(char* message, int size){
   return hash;
 }
 
+#endif
 
 extern int RSA_VERIFY(pub_key_t pub_key, char* message, int32_t* signature);
 
@@ -86,6 +88,9 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
     int bytes = 
       sizeof(manifest.pub_signature_key)+sizeof(manifest.image_length)+manifest.image_length;
 
+    char* hash;
+    
+#if !__SIMPLE_HASH
     char message[bytes];
     
     memcpy(
@@ -104,8 +109,10 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
       manifest.image_length
     );
 
-    char* hash = HASH(manifest.image_code, manifest.image_length);
+    hash = HASH(manifest.image_code, manifest.image_length);
     __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, "PROPERTY 3: Hash is 256 bits");
+#endif
+    
 
     return RSA_VERIFY(rom_ext_pub_key, hash, manifest.signature.value); //0 or 1
 }
@@ -259,7 +266,7 @@ void PROOF_HARNESS(){
 /*Run Command: 
 big boi
 cbmc mask_rom.c sha2-256.c --function PROOF_HARNESS --unwind 100 --unwindset sha256_update.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
-
+cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 
 */
 
