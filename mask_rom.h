@@ -4,8 +4,8 @@
 #include <stdlib.h>
 
 #define __REACHABILITY_CHECK __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
-#define MAX_ROM_EXTS 5
-#define RSA_SIZE 96
+#define MAX_ROM_EXTS 1
+#define RSA_SIZE 5
 #define PMP_REGIONS 16
 
 //Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size
@@ -17,7 +17,8 @@ typedef struct signature_t{
 
 //Represents a public key
 typedef struct pub_key_t{
-    int32_t value[RSA_SIZE];
+    int32_t exponent;
+    int32_t modulus[RSA_SIZE];
     //something else
 } pub_key_t;
 

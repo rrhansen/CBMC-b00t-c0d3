@@ -10,19 +10,19 @@ doc/security/specs/secure_boot/index.md
 #include "sha2-256.h"
 #include "mask_rom.h"
 
-#define __LIBRARY_MODE    1 //Used when verifying PROPERTY 3
-#define __SIMPLE_HASH     0 //if 1 -> should be verified without sha file
+#define __LIBRARY_MODE    0 //Used when verifying PROPERTY 3
+#define __SIMPLE_HASH     1 //if 1 -> should be verified without sha file
 #define __SIMPLE_RSA      1
 
 
 //for CBMC
 int __current_rom_ext = 0;
 int __boot_policy_stop = 0;
-int __rom_ext_called[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //used for CBMC postcondition
-int __rom_ext_fail_func[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //for CBMC PROPERTY 6
-int __boot_failed_called[MAX_ROM_EXTS] = { 0,0,0,0,0 };
-int __validated_rom_exts[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //used for CBMC postcondition
-int __rom_ext_returned[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //used for CBMC postcondition
+int __rom_ext_called[MAX_ROM_EXTS] = {  }; //used for CBMC postcondition
+int __rom_ext_fail_func[MAX_ROM_EXTS] = {  }; //for CBMC PROPERTY 6
+int __boot_failed_called[MAX_ROM_EXTS] = {  };
+int __validated_rom_exts[MAX_ROM_EXTS] = {  }; //used for CBMC postcondition
+int __rom_ext_returned[MAX_ROM_EXTS] = {  }; //used for CBMC postcondition
 int __imply(int a, int b) { return a ? b : 1; }
 
 
@@ -62,9 +62,12 @@ pub_key_t read_pub_key(rom_ext_manifest_t __current_rom_ext_manifest) {
 
 
 extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
-#if !__LIBRARY_MODE
+#if !__LIBRARY_MODE    
+    if (rom_ext_pub_key.exponent == 0)
+        return 0;
+
     for (int i = 0; i < RSA_SIZE; i++) {
-        if (rom_ext_pub_key.value[i] != 0)
+        if (rom_ext_pub_key.modulus[i] != 0)
             return 1; // If the key[i] != 0 for one i, the key is valid.
     }
     return 0; // returns a boolean value
@@ -231,10 +234,13 @@ int __help_sign_valid(int* sign) { //used for CBMC assertion + postcondition
 }
 
 
-int __help_key_valid(int* key) { //used for CBMC assertion + postcondition
+int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postcondition
 #if !__LIBRARY_MODE
+    if (pkey.exponent == 0)
+        return 0;
+
     for (int i = 0; i < RSA_SIZE; i++) {
-        if (key[i] != 0)
+        if (pkey.modulus[i] != 0)
             return 1;
     }
     return 0;
@@ -314,7 +320,7 @@ void PROOF_HARNESS() {
             __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value),
             "Postcondition PROPERTY 1: rom_ext VALIDATED => valid signature");
 
-            __CPROVER_postcondition(__help_key_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key.value),
+            __CPROVER_postcondition(__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
             "Postcondition PROPERTY 2: rom_ext VALIDATED => valid key");
 
             __CPROVER_postcondition(__rom_ext_called[i],
@@ -403,7 +409,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
         signature_t signature = __current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
 
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == 3072,
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == RSA_SIZE*32,
         "PROPERTY 1: Signature is 3072-bits");
 
         if (!check_rom_ext_manifest(__current_rom_ext_manifest)) {
@@ -423,14 +429,14 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         //Step 2.iii.b
         pub_key_t rom_ext_pub_key = read_pub_key(__current_rom_ext_manifest);
 
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.value) * 8 == 3072,
-        "PROPERTY 2: Public key is 3072-bits");
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.modulus) * 8 == RSA_SIZE*32+32,
+        "PROPERTY 2: Public key modulus is 3072-bits and exponent is 32 bits.");
 
         //Step 2.iii.b
         if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
             __REACHABILITY_CHECK
 
-            __CPROVER_assert(!__help_key_valid(rom_ext_pub_key.value),
+            __CPROVER_assert(!__help_pkey_valid(rom_ext_pub_key),
             "PROPERTY 2: Stop verification iff key is invalid");
 
             continue;
@@ -438,7 +444,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
         __REACHABILITY_CHECK
 
-        __CPROVER_assert(__help_key_valid(rom_ext_pub_key.value),
+        __CPROVER_assert(__help_pkey_valid(rom_ext_pub_key),
         "PROPERTY 2: Continue verification iff key is valid");
 
         //Step 2.iii.b
