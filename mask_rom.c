@@ -17,12 +17,13 @@ doc/security/specs/secure_boot/index.md
 
 //for CBMC
 int __current_rom_ext = 0;
+rom_ext_manifest_t __current_rom_ext_mf;
 int __boot_policy_stop = 0;
-int __rom_ext_called[MAX_ROM_EXTS] = {  }; //used for CBMC postcondition
-int __rom_ext_fail_func[MAX_ROM_EXTS] = {  }; //for CBMC PROPERTY 6
-int __boot_failed_called[MAX_ROM_EXTS] = {  };
-int __validated_rom_exts[MAX_ROM_EXTS] = {  }; //used for CBMC postcondition
-int __rom_ext_returned[MAX_ROM_EXTS] = {  }; //used for CBMC postcondition
+int __rom_ext_called[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
+int __rom_ext_fail_func[MAX_ROM_EXTS] = { }; //for CBMC PROPERTY 6
+int __boot_failed_called[MAX_ROM_EXTS] = { };
+int __validated_rom_exts[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
+int __rom_ext_returned[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
 int __imply(int a, int b) { return a ? b : 1; }
 
 
@@ -74,18 +75,50 @@ extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key){ //assumed behavior be
 #endif
 }
 
-#if !__SIMPLE_HASH
 
 extern char* HASH(char* message, int size){
-  char* hash = sha256(message, size);
+  int __expected_size = 
+    sizeof(__current_rom_ext_mf.pub_signature_key)+sizeof(__current_rom_ext_mf.image_length)+__current_rom_ext_mf.image_length;
   
-  __CPROVER_assert(__CPROVER_r_ok(hash, 256/8), 
+  __CPROVER_assert(memcmp(
+      message, 
+      &__current_rom_ext_mf.pub_signature_key, 
+      sizeof(__current_rom_ext_mf.pub_signature_key)) == 0,
+      "PROPERTY 4: Key");
+
+  __CPROVER_assert(memcmp(
+      message + sizeof(__current_rom_ext_mf.pub_signature_key),
+      &__current_rom_ext_mf.image_length,
+      sizeof(__current_rom_ext_mf.image_length)) == 0,
+      "PROPERTY 4: Image length");
+
+  __CPROVER_assert(memcmp(
+      message + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
+      __current_rom_ext_mf.image_code,
+      __current_rom_ext_mf.image_length) == 0,
+      "PROPERTY 4: Image code");
+     
+  __CPROVER_assert(size == __expected_size,
+  "PROPERTY 4: Hash size parameter is as expected.");
+ 
+  __CPROVER_assert(__CPROVER_OBJECT_SIZE(message) == __expected_size,
+  "PROPERTY 4: Size of message is as expected.");
+  
+  char* hash;
+
+#if !__SIMPLE_HASH
+  hash = sha256(message, size);
+  
+  __CPROVER_assert(__CPROVER_r_ok(hash, 256/8),
   "PROPERTY 3: hash is in readable address");
+
+#endif
   
+  __REACHABILITY_CHECK
+
   return hash;
 }
 
-#endif
 
 extern int RSA_VERIFY(pub_key_t pub_key, char* message, signature_t signature) {
     __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == RSA_SIZE * 32,
@@ -98,12 +131,11 @@ extern int RSA_VERIFY(pub_key_t pub_key, char* message, signature_t signature) {
 
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest) {
+    __current_rom_ext_mf = manifest; //for cbmc PROPERTY 4
+
     int bytes = 
       sizeof(manifest.pub_signature_key)+sizeof(manifest.image_length)+manifest.image_length;
 
-    char* hash;
-    
-#if !__SIMPLE_HASH
     char message[bytes];
     
     memcpy(
@@ -120,12 +152,15 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
       message + sizeof(manifest.pub_signature_key) + sizeof(manifest.image_length), 
       manifest.image_code, 
       manifest.image_length
-    );
+    );   
 
-    hash = HASH(message, bytes);
-    __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, "PROPERTY 3: Hash is 256 bits");
+    char* hash = HASH(message, bytes);
+
+#if !__SIMPLE_HASH
+    __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, 
+    "PROPERTY 3: Hash is 256 bits");    
 #endif
-    
+
     //Otherwise OBJECT_SIZE returns size of manifest and not signature.
     signature_t signature = manifest.signature;
 
@@ -380,14 +415,14 @@ void PROOF_HARNESS() {
 }
 
 /*
-PROPERTY 1, 2, 6, 7, 8, 9, 10
+PROPERTY 1, 2, 4, 6, 7, 8, 9, 10
 
 __LIBRARY_MODE 0
 __SIMPLE_HASH  1
 __SIMPLE_RSA   1
 
 Run Command.
-cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 */
 
 

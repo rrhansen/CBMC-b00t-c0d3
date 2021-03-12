@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <malloc.h>
 #include <stdlib.h>
+#include <memory.h>
 
 #define __REACHABILITY_CHECK __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 #define MAX_ROM_EXTS 1
