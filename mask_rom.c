@@ -527,7 +527,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
 
 /*
-//It works with the following command and configuration: 
+//It works with the following configuration and command. It checks for all properties.: 
 #define __LIBRARY_MODE    0 //Used when verifying PROPERTY 3
 #define __SIMPLE_HASH     0 //if 1 -> should be verified without sha file
 #define __SIMPLE_RSA      1
