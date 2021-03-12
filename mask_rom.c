@@ -11,7 +11,7 @@ doc/security/specs/secure_boot/index.md
 #include "mask_rom.h"
 
 #define __LIBRARY_MODE    0 //Used when verifying PROPERTY 3
-#define __SIMPLE_HASH     1 //if 1 -> should be verified without sha file
+#define __SIMPLE_HASH     0 //if 1 -> should be verified without sha file
 #define __SIMPLE_RSA      1
 
 
@@ -79,14 +79,22 @@ extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key){ //assumed behavior be
 extern char* HASH(char* message, int size){
   char* hash = sha256(message, size);
   
-  __CPROVER_assert(__CPROVER_r_ok(hash, 256/8), "PROPERTY 3: hash is in readable address");
+  __CPROVER_assert(__CPROVER_r_ok(hash, 256/8), 
+  "PROPERTY 3: hash is in readable address");
   
   return hash;
 }
 
 #endif
 
-extern int RSA_VERIFY(pub_key_t pub_key, char* message, int32_t* signature);
+extern int RSA_VERIFY(pub_key_t pub_key, char* message, signature_t signature) {
+    __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == RSA_SIZE * 32,
+    "PROPERTY 5: Signature to be verified is 3072-bits.");
+
+    __CPROVER_assert(__CPROVER_OBJECT_SIZE(message) * 8 == 256,
+    "PROPERTY 5: Message to compare should be a 256 bit value.");
+    __REACHABILITY_CHECK
+}
 
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest) {
@@ -118,8 +126,10 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
     __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, "PROPERTY 3: Hash is 256 bits");
 #endif
     
+    //Otherwise OBJECT_SIZE returns size of manifest and not signature.
+    signature_t signature = manifest.signature;
 
-    return RSA_VERIFY(rom_ext_pub_key, hash, manifest.signature.value); //0 or 1
+    return RSA_VERIFY(rom_ext_pub_key, hash, signature); //0 or 1
 }
 
 
@@ -223,10 +233,10 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 }
 
 
-int __help_sign_valid(int* sign) { //used for CBMC assertion + postcondition
+int __help_sign_valid(signature_t sign) { //used for CBMC assertion + postcondition
 #if !__LIBRARY_MODE
     for (int i = 0; i < RSA_SIZE; i++) {
-        if (sign[i] != 0)
+        if (sign.value[i] != 0)
             return 1;
     }
     return 0;
@@ -317,7 +327,7 @@ void PROOF_HARNESS() {
         if (__validated_rom_exts[i]) { //validated - try to boot from
             __REACHABILITY_CHECK
 
-            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature.value),
+            __CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature),
             "Postcondition PROPERTY 1: rom_ext VALIDATED => valid signature");
 
             __CPROVER_postcondition(__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
@@ -415,7 +425,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         if (!check_rom_ext_manifest(__current_rom_ext_manifest)) {
             __REACHABILITY_CHECK
 
-            __CPROVER_assert(!__help_sign_valid(__current_rom_ext_manifest.signature.value),
+            __CPROVER_assert(!__help_sign_valid(__current_rom_ext_manifest.signature),
             "PROPERTY 1: Stop verification iff signature is invalid");
 
             continue;
@@ -423,7 +433,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
         __REACHABILITY_CHECK
 
-        __CPROVER_assert(__help_sign_valid(__current_rom_ext_manifest.signature.value),
+        __CPROVER_assert(__help_sign_valid(__current_rom_ext_manifest.signature),
         "PROPERTY 1: Continue verification iff signature is valid");
 
         //Step 2.iii.b
