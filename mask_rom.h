@@ -6,7 +6,7 @@
 
 #define __REACHABILITY_CHECK __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 #define MAX_ROM_EXTS 1
-#define RSA_SIZE 10
+#define RSA_SIZE 5
 #define PMP_REGIONS 16
 
 //Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size

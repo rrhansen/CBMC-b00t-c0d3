@@ -80,19 +80,19 @@ extern char* HASH(char* message, int size){
   __CPROVER_assert(memcmp(
       message, 
       &__current_rom_ext_mf.pub_signature_key, 
-      sizeof(__current_rom_ext_mf.pub_signature_key)),
-  "PROPERTY 4: Key");
+      sizeof(__current_rom_ext_mf.pub_signature_key)) == 0,
+      "PROPERTY 4: Key");
 
   __CPROVER_assert(memcmp(
       message + sizeof(__current_rom_ext_mf.pub_signature_key),
       &__current_rom_ext_mf.image_length,
-      sizeof(__current_rom_ext_mf.image_length)),
+      sizeof(__current_rom_ext_mf.image_length)) == 0,
       "PROPERTY 4: Image length");
 
   __CPROVER_assert(memcmp(
       message + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
       __current_rom_ext_mf.image_code,
-      __current_rom_ext_mf.image_length),
+      __current_rom_ext_mf.image_length) == 0,
       "PROPERTY 4: Image code");
 
    
@@ -145,7 +145,7 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
       manifest.image_length
     );
 
-    char* hash = HASH(message, manifest.image_length);
+    char* hash = HASH(message, bytes);
 
 #if !__SIMPLE_HASH
     __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, 
@@ -400,7 +400,7 @@ void PROOF_HARNESS() {
 }
 
 /*
-PROPERTY 1, 2, 6, 7, 8, 9, 10
+PROPERTY 1, 2, 4, 6, 7, 8, 9, 10
 
 __LIBRARY_MODE 0
 __SIMPLE_HASH  1
@@ -439,7 +439,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
         signature_t signature = __current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
 
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == 3072,
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == RSA_SIZE*32,
         "PROPERTY 1: Signature is 3072-bits");
 
         if (!check_rom_ext_manifest(__current_rom_ext_manifest)) {
@@ -459,7 +459,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         //Step 2.iii.b
         pub_key_t rom_ext_pub_key = read_pub_key(__current_rom_ext_manifest);
 
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.value) * 8 == 3072,
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.value) * 8 == RSA_SIZE*32,
         "PROPERTY 2: Public key is 3072-bits");
 
         //Step 2.iii.b
