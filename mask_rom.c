@@ -77,8 +77,30 @@ extern char* HASH(char* message, int size){
   int __expected_size = 
     sizeof(__current_rom_ext_mf.pub_signature_key)+sizeof(__current_rom_ext_mf.image_length)+__current_rom_ext_mf.image_length;
   
-  __CPROVER_assert(memcmp(message, &__current_rom_ext_mf.pub_signature_key, __expected_size), 
-  "PROPERTY 4: hash input correspond to signed area of manifest");
+  __CPROVER_assert(memcmp(
+      message, 
+      &__current_rom_ext_mf.pub_signature_key, 
+      sizeof(__current_rom_ext_mf.pub_signature_key)),
+  "PROPERTY 4: Key");
+
+  __CPROVER_assert(memcmp(
+      message + sizeof(__current_rom_ext_mf.pub_signature_key),
+      &__current_rom_ext_mf.image_length,
+      sizeof(__current_rom_ext_mf.image_length)),
+      "PROPERTY 4: Image length");
+
+  __CPROVER_assert(memcmp(
+      message + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
+      __current_rom_ext_mf.image_code,
+      __current_rom_ext_mf.image_length),
+      "PROPERTY 4: Image code");
+
+   
+  __CPROVER_assert(size == __expected_size,
+  "PROPERTY 4: Hash size parameter is as expected.");
+  
+  __CPROVER_assert(__CPROVER_OBJECT_SIZE(message) == __expected_size,
+  "PROPERTY 4: Size of message is as expected.");
   
   char* hash;
 
