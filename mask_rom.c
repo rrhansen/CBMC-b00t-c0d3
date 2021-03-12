@@ -524,3 +524,21 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 #endif
 }
 
+
+
+/*
+//It works with the following command and configuration: 
+#define __LIBRARY_MODE    0 //Used when verifying PROPERTY 3
+#define __SIMPLE_HASH     0 //if 1 -> should be verified without sha file
+#define __SIMPLE_RSA      1
+
+#define MAX_ROM_EXTS 1
+#define RSA_SIZE 5
+#define PMP_REGIONS 16
+
+cbmc mask_rom.c sha2-256.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+*/
+
+
+
+
