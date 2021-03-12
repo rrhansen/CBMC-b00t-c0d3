@@ -84,19 +84,19 @@ extern char* HASH(char* message, int size){
       message, 
       &__current_rom_ext_mf.pub_signature_key, 
       sizeof(__current_rom_ext_mf.pub_signature_key)) == 0,
-      "PROPERTY 4: Key");
+      "PROPERTY 4: Message contains the key");
 
   __CPROVER_assert(memcmp(
       message + sizeof(__current_rom_ext_mf.pub_signature_key),
       &__current_rom_ext_mf.image_length,
       sizeof(__current_rom_ext_mf.image_length)) == 0,
-      "PROPERTY 4: Image length");
+      "PROPERTY 4: Message contains the Image length");
 
   __CPROVER_assert(memcmp(
       message + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
       __current_rom_ext_mf.image_code,
       __current_rom_ext_mf.image_length) == 0,
-      "PROPERTY 4: Image code");
+      "PROPERTY 4: Message contains the Image code");
      
   __CPROVER_assert(size == __expected_size,
   "PROPERTY 4: Hash size parameter is as expected.");
@@ -126,6 +126,10 @@ extern int RSA_VERIFY(pub_key_t pub_key, char* message, signature_t signature) {
 
     __CPROVER_assert(__CPROVER_OBJECT_SIZE(message) * 8 == 256,
     "PROPERTY 5: Message to compare should be a 256 bit value.");
+
+    __CPROVER_assert(__CPROVER_OBJECT_SIZE(pub_key.modulus) * 8 == RSA_SIZE * 32 + 32,
+    "PROPERTY 5: Public key modulus is 3072-bits and exponent is 32 bits.");
+
     __REACHABILITY_CHECK
 }
 
@@ -537,6 +541,11 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 #define PMP_REGIONS 16
 
 cbmc mask_rom.c sha2-256.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+
+Result should be: 18 out of 778 failed.
+
+--unwindset memcmp.0:25 is due to memcmp in HASH.
+
 */
 
 
