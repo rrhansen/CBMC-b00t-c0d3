@@ -10,19 +10,20 @@ doc/security/specs/secure_boot/index.md
 #include "sha2-256.h"
 #include "mask_rom.h"
 
-#define __LIBRARY_MODE    1 //Used when verifying PROPERTY 3
-#define __SIMPLE_HASH     0 //if 1 -> should be verified without sha file
+#define __LIBRARY_MODE    0 //Used when verifying PROPERTY 3
+#define __SIMPLE_HASH     1 //if 1 -> should be verified without sha file
 #define __SIMPLE_RSA      1
 
 
 //for CBMC
 int __current_rom_ext = 0;
+rom_ext_manifest_t __current_rom_ext_mf;
 int __boot_policy_stop = 0;
-int __rom_ext_called[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //used for CBMC postcondition
-int __rom_ext_fail_func[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //for CBMC PROPERTY 6
-int __boot_failed_called[MAX_ROM_EXTS] = { 0,0,0,0,0 };
-int __validated_rom_exts[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //used for CBMC postcondition
-int __rom_ext_returned[MAX_ROM_EXTS] = { 0,0,0,0,0 }; //used for CBMC postcondition
+int __rom_ext_called[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
+int __rom_ext_fail_func[MAX_ROM_EXTS] = {  }; //for CBMC PROPERTY 6
+int __boot_failed_called[MAX_ROM_EXTS] = { };
+int __validated_rom_exts[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
+int __rom_ext_returned[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
 int __imply(int a, int b) { return a ? b : 1; }
 
 
@@ -71,28 +72,39 @@ extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key){ //assumed behavior be
 #endif
 }
 
-#if !__SIMPLE_HASH
 
 extern char* HASH(char* message, int size){
-  char* hash = sha256(message, size);
+  int __expected_size = 
+    sizeof(__current_rom_ext_mf.pub_signature_key)+sizeof(__current_rom_ext_mf.image_length)+__current_rom_ext_mf.image_length;
   
-  __CPROVER_assert(__CPROVER_r_ok(hash, 256/8), "PROPERTY 3: hash is in readable address");
+  __CPROVER_assert(memcmp(message, &__current_rom_ext_mf.pub_signature_key, __expected_size), 
+  "PROPERTY 4: hash input correspond to signed area of manifest");
   
+  char* hash;
+
+#if !__SIMPLE_HASH
+  hash = sha256(message, size);
+  
+  __CPROVER_assert(__CPROVER_r_ok(hash, 256/8),
+  "PROPERTY 3: hash is in readable address");
+
+#endif
+  
+  __REACHABILITY_CHECK
+
   return hash;
 }
 
-#endif
 
 extern int RSA_VERIFY(pub_key_t pub_key, char* message, int32_t* signature);
 
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest) {
+    __current_rom_ext_mf = manifest; //for cbmc PROPERTY 4
+
     int bytes = 
       sizeof(manifest.pub_signature_key)+sizeof(manifest.image_length)+manifest.image_length;
 
-    char* hash;
-    
-#if !__SIMPLE_HASH
     char message[bytes];
     
     memcpy(
@@ -111,10 +123,12 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
       manifest.image_length
     );
 
-    hash = HASH(message, manifest.image_length);
-    __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, "PROPERTY 3: Hash is 256 bits");
+    char* hash = HASH(message, manifest.image_length);
+
+#if !__SIMPLE_HASH
+    __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, 
+    "PROPERTY 3: Hash is 256 bits");    
 #endif
-    
 
     return RSA_VERIFY(rom_ext_pub_key, hash, manifest.signature.value); //0 or 1
 }
@@ -371,7 +385,7 @@ __SIMPLE_HASH  1
 __SIMPLE_RSA   1
 
 Run Command.
-cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 */
 
 
