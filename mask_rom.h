@@ -9,6 +9,9 @@
 #define RSA_SIZE 5
 #define PMP_REGIONS 16
 
+#ifndef MASK_ROM_H
+#define MASK_ROM_H
+
 //Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size
 typedef struct signature_t{
     int32_t value[RSA_SIZE];
@@ -78,3 +81,5 @@ typedef struct __PMP_regions_t {
     //There are 16 PMP regions (0...15)
     PMP_region_t pmp_regions[PMP_REGIONS];
 } __PMP_regions_t;
+
+#endif
