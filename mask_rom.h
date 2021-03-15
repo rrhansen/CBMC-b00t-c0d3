@@ -1,3 +1,6 @@
+#ifndef MASK_ROM_H
+#define MASK_ROM_H
+
 #include <string.h>
 #include <stdint.h>
 #include <malloc.h>
@@ -9,8 +12,6 @@
 #define RSA_SIZE 5
 #define PMP_REGIONS 16
 
-#ifndef MASK_ROM_H
-#define MASK_ROM_H
 
 //Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size
 typedef struct signature_t{
