@@ -225,8 +225,17 @@ void PROOF_HARNESS() {
     rom_exts_manifests_t rom_exts_to_try = rom_ext_manifests_to_try(boot_policy);
 
     __CPROVER_assume(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0);
-    __CPROVER_assume(boot_policy.fail == &__func_fail);
-    __CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
+
+    int non_det;
+    switch(non_det){
+      //case 1: //points to some random part of memory - This breaks the security
+      //  break;
+      default: //points to valid functions
+        __CPROVER_assume(boot_policy.fail == &__func_fail);
+        __CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
+        break;
+    }
+
     
     for(int i = 0; i < rom_exts_to_try.size; i++){
       __CPROVER_assume(10 >  rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
@@ -318,6 +327,9 @@ Result should be: 18 out of 778 failed.
 --unwindset memcmp.0:25 is due to memcmp in HASH.
 */
 
+void dangerFunction(){
+  __REACHABILITY_CHECK
+}
 
 void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_try ){
     __CPROVER_precondition(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0, 
