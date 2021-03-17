@@ -116,13 +116,13 @@ void __register_pmp_region(int rom_ext, int pmp_id, int r, int w, int e, int l){
 void __some_entry_func() { __rom_ext_called[__current_rom_ext] = 1; /*for CBMC PROPERTY 6*/ }
 
 
-int final_jump_to_rom_ext(rom_ext_manifest_t __current_rom_ext_manifest) { // Returns a boolean value.
-    __current_rom_ext_manifest.image_code = &__some_entry_func; //for cbmc
+int final_jump_to_rom_ext(rom_ext_manifest_t current_rom_ext_manifest) { // Returns a boolean value.
+    __CPROVER_assume(current_rom_ext_manifest.image_code = &__some_entry_func); //for cbmc
     
     //Execute rom ext code step 2.iii.e
-    rom_ext_boot_func* rom_ext_entry = (rom_ext_boot_func*)__current_rom_ext_manifest.image_code;
+    rom_ext_boot_func* rom_ext_entry = (rom_ext_boot_func*)current_rom_ext_manifest.image_code;
 
-    __CPROVER_assert(rom_ext_entry == __current_rom_ext_manifest.image_code,
+    __CPROVER_assert(rom_ext_entry == current_rom_ext_manifest.image_code,
     "PROPERTY 6: Correct entry point address.");
 
     __REACHABILITY_CHECK
