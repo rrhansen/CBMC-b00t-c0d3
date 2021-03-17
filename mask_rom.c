@@ -226,8 +226,8 @@ void PROOF_HARNESS() {
 
     __CPROVER_assume(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0);
 
-    int non_det;
-    switch(non_det){
+    int __non_det;
+    switch(__non_det){
       //case 1: //points to some random part of memory - This breaks the security
       //  break;
       default: //points to valid functions
