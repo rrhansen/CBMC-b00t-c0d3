@@ -37,6 +37,9 @@ extern char* HASH(char* message, int size){
 
   hash = sha256(message, size);
   
+  __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, 
+  "PROPERTY 3: Hash is 256 bits");   
+
   __CPROVER_assert(__CPROVER_r_ok(hash, 256/8),
   "PROPERTY 3: hash is in readable address");
   
@@ -93,7 +96,10 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
   char* hash = HASH(message, bytes);
 
   __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, 
-  "PROPERTY 3: Hash is 256 bits");    
+  "PROPERTY 3: Hash is 256 bits");   
+
+  __CPROVER_assert(__CPROVER_r_ok(hash, 256/8),
+  "PROPERTY 3: hash is in readable address");  
 
   //Otherwise OBJECT_SIZE returns size of manifest and not signature.
   signature_t signature = manifest.signature;
