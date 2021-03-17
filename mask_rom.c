@@ -306,10 +306,10 @@ void PROOF_HARNESS() {
 PROPERTY 1, 2, 6, 7, 8, 9, 10
 
 RSA_SIZE = 96
-cbmc mask_rom.c mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 
 RSA_SIZE = 5
-cbmc mask_rom.c mask_rom.c --function PROOF_HARNESS --unwind 20 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c --function PROOF_HARNESS --unwind 20 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 
 
 PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
@@ -377,8 +377,11 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         //Step 2.iii.b
         pub_key_t rom_ext_pub_key = read_pub_key(__current_rom_ext_manifest);
 
-        __CPROVER_assert(sizeof(rom_ext_pub_key) * 8 == RSA_SIZE*32+32,
-        "PROPERTY 2: Public key modulus is 3072-bits and exponent is 32 bits.");
+        __CPROVER_assert(sizeof(rom_ext_pub_key.exponent) * 8 == 32,
+        "PROPERTY 2: Public key exponent is 32 bits.");
+
+        __CPROVER_assert((sizeof(rom_ext_pub_key) - sizeof(rom_ext_pub_key.exponent)) * 8 == RSA_SIZE*32,
+        "PROPERTY 2: Public key modulus is 3072-bits.");    
 
         //Step 2.iii.b
         if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
