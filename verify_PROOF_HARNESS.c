@@ -4,7 +4,7 @@
 void PROOF_HARNESS_VERIFY(){
   rom_ext_manifest_t rom_ext;
 
-  __CPROVER_assume(10 >  rom_ext.image_length && rom_ext.image_length > 0);
+  __CPROVER_assume(MAX_IMAGE_LENGTH >  rom_ext.image_length && rom_ext.image_length > 0);
   rom_ext.image_code = malloc(sizeof(char) * rom_ext.image_length );
 
   if(!verify_rom_ext_signature(rom_ext.pub_signature_key, rom_ext)){

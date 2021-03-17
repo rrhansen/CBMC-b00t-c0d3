@@ -61,7 +61,7 @@ extern int RSA_VERIFY(pub_key_t pub_key, char* message, signature_t signature) {
 
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest) {
-  __CPROVER_precondition(10 >  manifest.image_length && manifest.image_length > 0, 
+  __CPROVER_precondition(MAX_IMAGE_LENGTH >  manifest.image_length && manifest.image_length > 0, 
   "Precondition: Assumes rom ext image code is < 10 and > 0");
 
   __CPROVER_precondition(__CPROVER_r_ok(manifest.image_code, manifest.image_length), 

@@ -238,7 +238,7 @@ void PROOF_HARNESS() {
 
     
     for(int i = 0; i < rom_exts_to_try.size; i++){
-      __CPROVER_assume(10 >  rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
+      __CPROVER_assume(MAX_IMAGE_LENGTH >  rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
       rom_exts_to_try.rom_exts_mfs[i].image_code = malloc(sizeof(char) *rom_exts_to_try.rom_exts_mfs[i].image_length );
     }
 

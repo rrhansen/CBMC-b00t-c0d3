@@ -11,6 +11,7 @@
 #define MAX_ROM_EXTS 1
 #define RSA_SIZE 5
 #define PMP_REGIONS 16
+#define MAX_IMAGE_LENGTH 10 //necessary constraint in order to terminate CBMC verification
 
 
 //Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size
