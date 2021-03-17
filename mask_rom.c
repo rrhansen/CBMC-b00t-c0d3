@@ -298,7 +298,6 @@ void PROOF_HARNESS() {
             __CPROVER_assert(__help_check_pmp_region(i, 0, 0, 0, 0, 0),
             "Postcondition PROPERTY 10: If rom_ext was invalid, PMP region 0 should not be R, E, W, and L.");
         }
-
     }
     __REACHABILITY_CHECK
 }
