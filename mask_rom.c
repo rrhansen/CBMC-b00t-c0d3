@@ -377,7 +377,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         //Step 2.iii.b
         pub_key_t rom_ext_pub_key = read_pub_key(__current_rom_ext_manifest);
 
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(rom_ext_pub_key.modulus) * 8 == RSA_SIZE*32+32,
+        __CPROVER_assert(sizeof(rom_ext_pub_key) * 8 == RSA_SIZE*32+32,
         "PROPERTY 2: Public key modulus is 3072-bits and exponent is 32 bits.");
 
         //Step 2.iii.b
