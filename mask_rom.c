@@ -364,7 +364,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
             __REACHABILITY_CHECK
 
             __CPROVER_assert(!__help_sign_valid(__current_rom_ext_manifest.signature),
-            "PROPERTY 1: Stop verification iff signature is invalid");
+            "PROPERTY 1: Stop verification if signature is invalid");
 
             continue;
         }
@@ -372,7 +372,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         __REACHABILITY_CHECK
 
         __CPROVER_assert(__help_sign_valid(__current_rom_ext_manifest.signature),
-        "PROPERTY 1: Continue verification iff signature is valid");
+        "PROPERTY 1: Continue verification if signature is valid");
 
         //Step 2.iii.b
         pub_key_t rom_ext_pub_key = read_pub_key(__current_rom_ext_manifest);
@@ -388,7 +388,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
             __REACHABILITY_CHECK
 
             __CPROVER_assert(!__help_pkey_valid(rom_ext_pub_key),
-            "PROPERTY 2: Stop verification iff key is invalid");
+            "PROPERTY 2: Stop verification if key is invalid");
 
             continue;
         }
@@ -396,7 +396,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         __REACHABILITY_CHECK
 
         __CPROVER_assert(__help_pkey_valid(rom_ext_pub_key),
-        "PROPERTY 2: Continue verification iff key is valid");
+        "PROPERTY 2: Continue verification if key is valid");
 
         //Step 2.iii.b
         if (!verify_rom_ext_signature(rom_ext_pub_key, __current_rom_ext_manifest)) {
