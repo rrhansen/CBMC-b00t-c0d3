@@ -67,7 +67,7 @@ typedef struct boot_policy_t {
 
 
 //Represents a pmp region
-typedef struct PMP_region_t {
+typedef struct __PMP_region_t {
     int identifier;
    
     //Locked, Read, Write, Execute
@@ -76,12 +76,12 @@ typedef struct PMP_region_t {
     int E;
     int L;
 
-} PMP_region_t;
+} __PMP_region_t;
 
 
 typedef struct __PMP_regions_t {
     //There are 16 PMP regions (0...15)
-    PMP_region_t pmp_regions[PMP_REGIONS];
+    __PMP_region_t pmp_regions[PMP_REGIONS];
 } __PMP_regions_t;
 
 #endif

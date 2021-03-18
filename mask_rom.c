@@ -267,10 +267,10 @@ void PROOF_HARNESS() {
             __CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]),
             "Postcondition PROPERTY 6: (valid rom _ext and rom_ext code !return) => that rom_ext term func not called");
 
-            __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
+            __CPROVER_postcondition(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
             "Postcondition PROPERTY 9: PMP region 15 should be R and L, when rom_ext was validated.");
 
-            __CPROVER_assert(__help_check_pmp_region(i, 0, 1, 0, 1, 1),
+            __CPROVER_postcondition(__help_check_pmp_region(i, 0, 1, 0, 1, 1),
             "Postcondition PROPERTY 10: If rom_ext was valided, then PMP region 0 should be R, E, and L.");
             
         }
@@ -292,10 +292,10 @@ void PROOF_HARNESS() {
             __CPROVER_postcondition(__imply(i == __current_rom_ext, __boot_failed_called[i]),
             "Postcondition PROPERTY 8: Last rom_ext fail => fail func has been called");
 
-            __CPROVER_assert(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
+            __CPROVER_postcondition(__help_check_pmp_region(i, 15, 1, 0, 0, 1),
             "Postcondition PROPERTY 9: PMP region 15 should be R and L. Even if rom_ext was invalidated.");
 
-            __CPROVER_assert(__help_check_pmp_region(i, 0, 0, 0, 0, 0),
+            __CPROVER_postcondition(__help_check_pmp_region(i, 0, 0, 0, 0, 0),
             "Postcondition PROPERTY 10: If rom_ext was invalid, PMP region 0 should not be R, E, W, and L.");
         }
     }
