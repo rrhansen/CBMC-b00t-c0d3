@@ -54,9 +54,6 @@ extern int RSA_VERIFY(pub_key_t pub_key, char* message, signature_t signature) {
     __CPROVER_assert(__CPROVER_OBJECT_SIZE(message) * 8 == 256,
     "PROPERTY 5: Message to compare should be a 256 bit value.");
 
-    __CPROVER_assert(__CPROVER_OBJECT_SIZE(pub_key.modulus) * 8 == RSA_SIZE * 32 + 32,
-    "PROPERTY 5: Public key modulus is 3072-bits and exponent is 32 bits.");
-
     __CPROVER_assert(sizeof(pub_key.exponent) * 8 == 32,
     "PROPERTY 5: Public key exponent is 32 bits.");
 
