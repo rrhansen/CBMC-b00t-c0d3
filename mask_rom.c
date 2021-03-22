@@ -28,8 +28,14 @@ int __imply(int a, int b) { return a ? b : 1; }
 //The configured PMP regions for each rom ext.
 __PMP_regions_t __rom_ext_pmp_region[MAX_ROM_EXTS];
 
+// Function type used to define function pointer to the entry of the ROM_EXT stage.
+typedef void(rom_ext_boot_func)(void); 
 
-typedef void(rom_ext_boot_func)(void); // Function type used to define function pointer to the entry of the ROM_EXT stage.
+// Function type for entry point of boot policy fail function
+typedef void(fail_func)(void); 
+
+// Function type for entry point of boot policy fail rom ext terminated function.
+typedef void(fail_rom_ext_terminated_func)(rom_ext_manifest_t); 
 
 
 extern int* READ_FLASH(int start, int end) {
@@ -130,14 +136,16 @@ int final_jump_to_rom_ext(rom_ext_manifest_t current_rom_ext_manifest) { // Retu
 
 
 void boot_failed(boot_policy_t boot_policy) {
-    boot_policy.fail();
+    __REACHABILITY_CHECK
+    fail_func* fail_func_entry = (fail_func*)boot_policy.fail;
+    fail_func_entry();
 }
 
 
 void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_t current_rom_ext_manifest) {
     __REACHABILITY_CHECK
-
-    boot_policy.fail_rom_ext_terminated(current_rom_ext_manifest);
+    fail_rom_ext_terminated_func* fail_func_entry = (fail_rom_ext_terminated_func*)boot_policy.fail_rom_ext_terminated;
+    fail_func_entry(current_rom_ext_manifest);
 }
 
 

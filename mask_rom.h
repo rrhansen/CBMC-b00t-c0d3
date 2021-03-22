@@ -57,10 +57,12 @@ typedef struct boot_policy_t {
     int rom_ext_slot;
 
     //what to do if all ROM Ext are invalid
-    void (*fail) ();
+    uint32_t fail_length;
+    char* fail;
 
     //what to do if the ROM Ext unexpectedly returns
-    void (*fail_rom_ext_terminated) (rom_ext_manifest_t);
+    uint32_t fail_rom_ext_terminated_length;
+    char* fail_rom_ext_terminated;
 
 } boot_policy_t;
 
