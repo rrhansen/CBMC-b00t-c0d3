@@ -38,7 +38,7 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
   //Otherwise OBJECT_SIZE returns size of manifest and not signature.
   signature_t signature = manifest.signature;
 
-  int result = RSASSA_PKCS1_V1_5_VERIFY(rom_ext_pub_key.exponent, rom_ext_pub_key.modulus, message, bytes, signature.value, __current_rom_ext_mf);
+  int result = RSASSA_PKCS1_V1_5_VERIFY(rom_ext_pub_key.exponent, rom_ext_pub_key.modulus, message, bytes, signature.value, RSA_SIZE, __current_rom_ext_mf);
 
   return result; //0 or 1
 }
