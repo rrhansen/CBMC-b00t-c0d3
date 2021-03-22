@@ -12,6 +12,10 @@ doc/security/specs/secure_boot/index.md
 #include "verify.h"
 
 
+//Whitelist in ROM
+#define __PKEY_WHITELIST_SIZE 5
+static pub_key_t __pkey_whitelist[__PKEY_WHITELIST_SIZE];
+
 
 //for CBMC
 int __current_rom_ext = 0;
@@ -57,14 +61,22 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
 
 
 extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
-    if (rom_ext_pub_key.exponent == 0)
-        return 0;
+    for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
+        if (__pkey_whitelist[i].exponent != rom_ext_pub_key.exponent)
+            continue;
 
-    for (int i = 0; i < RSA_SIZE; i++) {
-        if (rom_ext_pub_key.modulus[i] != 0)
-            return 1; // If the key[i] != 0 for one i, the key is valid.
+        int j = 0;
+        for (j = 0; j < RSA_SIZE; j++) {
+            if (__pkey_whitelist[i].modulus[j] != rom_ext_pub_key.modulus[j])
+                break;
+        }
+
+        //if j == RSA_SIZE, then loop ran to completion and all entries were equal
+        if (j == RSA_SIZE)
+            return 1;
     }
-    return 0; // returns a boolean value
+
+    return 0;
 }
 
 
@@ -168,13 +180,21 @@ int __help_sign_valid(signature_t sign) { //used for CBMC assertion + postcondit
 
 
 int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postcondition
-    if (pkey.exponent == 0)
-        return 0;
+    for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
+        if (__pkey_whitelist[i].exponent != pkey.exponent)
+            continue;
 
-    for (int i = 0; i < RSA_SIZE; i++) {
-        if (pkey.modulus[i] != 0)
+        int j = 0;
+        for (j = 0; j < RSA_SIZE; j++) {
+            if (__pkey_whitelist[i].modulus[j] != pkey.modulus[j])
+                break;
+        }
+
+        //if j == RSA_SIZE, then loop ran to completion and all entries were equal
+        if (j == RSA_SIZE)
             return 1;
     }
+
     return 0;
 }
 
