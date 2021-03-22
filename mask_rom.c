@@ -171,6 +171,9 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 
 
 int __help_sign_valid(signature_t sign) { //used for CBMC assertion + postcondition
+    if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != RSA_SIZE * 32)
+        return 0;
+
     for (int i = 0; i < RSA_SIZE; i++) {
         if (sign.value[i] != 0)
             return 1;
