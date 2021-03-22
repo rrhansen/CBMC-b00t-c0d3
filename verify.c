@@ -28,7 +28,7 @@ extern char* HASH(char* message, int size){
       "PROPERTY 4: Message contains the Image code");
      
   __CPROVER_assert(size == __expected_size,
-  "PROPERTY 4: Hash size parameter is as expected.");
+  "PROPERTY 4: Message size parameter is as expected.");
  
   __CPROVER_assert(__CPROVER_OBJECT_SIZE(message) == __expected_size,
   "PROPERTY 4: Size of message is as expected.");
