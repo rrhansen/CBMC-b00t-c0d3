@@ -1,5 +1,5 @@
 /*********************************************************************
-* Filename:   sha256.c
+* Filename:   sha2_256.c
 * Author:     Brad Conte (brad AT bradconte.com)
 * Copyright:
 * Disclaimer: This code is presented "as is" without any guarantees.
@@ -41,7 +41,7 @@ static const WORD k[64] = {
 };
 
 /*********************** FUNCTION DEFINITIONS ***********************/
-void sha256_transform(SHA256_CTX *ctx, const BYTE data[])
+void SHA2_256_transform(SHA2_256_CTX *ctx, const BYTE data[])
 {
 	WORD a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 
@@ -82,7 +82,7 @@ void sha256_transform(SHA256_CTX *ctx, const BYTE data[])
 	ctx->state[7] += h;
 }
 
-void sha256_init(SHA256_CTX *ctx)
+void SHA2_256_init(SHA2_256_CTX *ctx)
 {
 	ctx->datalen = 0;
 	ctx->bitlen = 0;
@@ -96,7 +96,7 @@ void sha256_init(SHA256_CTX *ctx)
 	ctx->state[7] = 0x5be0cd19;
 }
 
-void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
+void SHA2_256_update(SHA2_256_CTX *ctx, const BYTE data[], size_t len)
 {
 	WORD i;
 
@@ -104,14 +104,14 @@ void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
 		ctx->data[ctx->datalen] = data[i];
 		ctx->datalen++;
 		if (ctx->datalen == 64) {
-			sha256_transform(ctx, ctx->data);
+			SHA2_256_transform(ctx, ctx->data);
 			ctx->bitlen += 512;
 			ctx->datalen = 0;
 		}
 	}
 }
 
-void sha256_final(SHA256_CTX *ctx, BYTE hash[])
+void SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[])
 {
 	WORD i;
 
@@ -127,7 +127,7 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 		ctx->data[i++] = 0x80;
 		while (i < 64)
 			ctx->data[i++] = 0x00;
-		sha256_transform(ctx, ctx->data);
+		SHA2_256_transform(ctx, ctx->data);
 		memset(ctx->data, 0, 56);
 	}
 
@@ -141,7 +141,7 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 	ctx->data[58] = ctx->bitlen >> 40;
 	ctx->data[57] = ctx->bitlen >> 48;
 	ctx->data[56] = ctx->bitlen >> 56;
-	sha256_transform(ctx, ctx->data);
+	SHA2_256_transform(ctx, ctx->data);
 
 	// Since this implementation uses little endian byte ordering and SHA uses big endian,
 	// reverse all the bytes when copying the final state to the output hash.
@@ -157,13 +157,13 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 	}
 }
 
-BYTE* sha256(BYTE mes[], int size){
-  BYTE* buf = malloc(SHA256_BLOCK_SIZE * sizeof(BYTE));
-	SHA256_CTX ctx;
+BYTE* SHA2_256(BYTE mes[], int size){
+  BYTE* buf = malloc(SHA2_256_BLOCK_SIZE * sizeof(BYTE));
+	SHA2_256_CTX ctx;
 
-	sha256_init(&ctx);
-	sha256_update(&ctx, mes, size);
-	sha256_final(&ctx, buf);
+	SHA2_256_init(&ctx);
+	SHA2_256_update(&ctx, mes, size);
+	SHA2_256_final(&ctx, buf);
 
   __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
   

@@ -33,7 +33,7 @@ extern char* HASH(char* message, int size){
   __CPROVER_assert(__CPROVER_OBJECT_SIZE(message) == __expected_size,
   "PROPERTY 4: Size of message is as expected.");
   
-  char* hash = sha256(message, size);
+  char* hash = SHA2_256(message, size);
   
   __CPROVER_assert(__CPROVER_OBJECT_SIZE(hash)==256/8, 
   "PROPERTY 3: Hash is 256 bits");   
