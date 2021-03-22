@@ -11,6 +11,7 @@
 
 /*************************** HEADER FILES ***************************/
 #include <stddef.h>
+#include "mask_rom.h"
 
 /****************************** MACROS ******************************/
 #define SHA2_256_BLOCK_SIZE 32            // SHA256 outputs a 32 byte digest
@@ -30,6 +31,6 @@ typedef struct {
 void SHA2_256_init(SHA2_256_CTX *ctx);
 void SHA2_256_update(SHA2_256_CTX *ctx, const BYTE data[], size_t len);
 void SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[]);
-BYTE* SHA2_256(BYTE mes[], int size);
+BYTE* SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf);
 
 #endif   // SHA256_H
