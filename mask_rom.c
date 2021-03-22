@@ -53,8 +53,8 @@ boot_policy_t read_boot_policy(){
 rom_exts_manifests_t rom_ext_manifests_to_try(boot_policy_t boot_policy) {}
 
 
-pub_key_t read_pub_key(rom_ext_manifest_t __current_rom_ext_manifest) {
-    return __current_rom_ext_manifest.pub_signature_key;
+pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
+    return current_rom_ext_manifest.pub_signature_key;
 }
 
 
@@ -142,10 +142,10 @@ void boot_failed(boot_policy_t boot_policy) {
 }
 
 
-void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_t __current_rom_ext_manifest) {
+void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_t current_rom_ext_manifest) {
     __REACHABILITY_CHECK
 
-    boot_policy.fail_rom_ext_terminated(__current_rom_ext_manifest);
+    boot_policy.fail_rom_ext_terminated(current_rom_ext_manifest);
 }
 
 
@@ -353,17 +353,17 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         "PROPERTY 9: PMP region 15 should be R and L.");
 
         __current_rom_ext = i;
-        rom_ext_manifest_t __current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
+        rom_ext_manifest_t current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
 
-        signature_t signature = __current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
+        signature_t __signature = current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
 
-        __CPROVER_assert(__CPROVER_OBJECT_SIZE(signature.value) * 8 == RSA_SIZE*32,
+        __CPROVER_assert(__CPROVER_OBJECT_SIZE(__signature.value) * 8 == RSA_SIZE*32,
         "PROPERTY 1: Signature is 3072-bits");
 
-        if (!check_rom_ext_manifest(__current_rom_ext_manifest)) {
+        if (!check_rom_ext_manifest(current_rom_ext_manifest)) {
             __REACHABILITY_CHECK
 
-            __CPROVER_assert(!__help_sign_valid(__current_rom_ext_manifest.signature),
+            __CPROVER_assert(!__help_sign_valid(current_rom_ext_manifest.signature),
             "PROPERTY 1: Stop verification if signature is invalid");
 
             continue;
@@ -371,11 +371,11 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
         __REACHABILITY_CHECK
 
-        __CPROVER_assert(__help_sign_valid(__current_rom_ext_manifest.signature),
+        __CPROVER_assert(__help_sign_valid(current_rom_ext_manifest.signature),
         "PROPERTY 1: Continue verification if signature is valid");
 
         //Step 2.iii.b
-        pub_key_t rom_ext_pub_key = read_pub_key(__current_rom_ext_manifest);
+        pub_key_t rom_ext_pub_key = read_pub_key(current_rom_ext_manifest);
 
         __CPROVER_assert(sizeof(rom_ext_pub_key.exponent) * 8 == 32,
         "PROPERTY 2: Public key exponent is 32 bits.");
@@ -399,7 +399,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         "PROPERTY 2: Continue verification if key is valid");
 
         //Step 2.iii.b
-        if (!verify_rom_ext_signature(rom_ext_pub_key, __current_rom_ext_manifest)) {
+        if (!verify_rom_ext_signature(rom_ext_pub_key, current_rom_ext_manifest)) {
             __REACHABILITY_CHECK
             continue;
         }
@@ -413,11 +413,11 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         "PROPERTY 10: PMP region 0 should be R, E, and L.");
 
         //Step 2.iii.e
-        if (!final_jump_to_rom_ext(__current_rom_ext_manifest)) {
+        if (!final_jump_to_rom_ext(current_rom_ext_manifest)) {
             __REACHABILITY_CHECK
 
             //Step 2.iv            
-            boot_failed_rom_ext_terminated(boot_policy, __current_rom_ext_manifest);
+            boot_failed_rom_ext_terminated(boot_policy, current_rom_ext_manifest);
             __boot_policy_stop = 1;
             return;
         }
