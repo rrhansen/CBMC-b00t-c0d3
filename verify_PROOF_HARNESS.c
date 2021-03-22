@@ -18,9 +18,9 @@ void PROOF_HARNESS_VERIFY(){
 PROPERTY 3, 4 ,5
 
 RSA_SIZE = 5
-Run: cbmc verify_PROOF_HARNESS.c verify.c sha2-256.c --function PROOF_HARNESS_VERIFY --unwind 11 --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
+Run: cbmc verify_PROOF_HARNESS.c verify.c sha2-256.c --function PROOF_HARNESS_VERIFY --unwind 11 --unwindset memcmp.0:25 --unwindset SHA2_256_update.0:40 --unwindset SHA2_256_final.0:56 --unwindset SHA2_256_final.1:64 --unwindset SHA2_256_transform.0:17 --unwindset SHA2_256_transform.1:64 --unwindset SHA2_256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
 
 RSA_SIZE = 96
-Run: cbmc verify_PROOF_HARNESS.c verify.c sha2-256.c --function PROOF_HARNESS_VERIFY --unwind 11 --unwindset memcmp.0:403 --unwindset sha256_update.0:403 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
+Run: cbmc verify_PROOF_HARNESS.c verify.c sha2-256.c --function PROOF_HARNESS_VERIFY --unwind 11 --unwindset memcmp.0:403 --unwindset SHA2_256_update.0:403 --unwindset SHA2_256_final.0:56 --unwindset SHA2_256_final.1:64 --unwindset SHA2_256_transform.0:17 --unwindset SHA2_256_transform.1:64 --unwindset SHA2_256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
 
 */
