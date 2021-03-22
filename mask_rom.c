@@ -38,15 +38,7 @@ extern int* READ_FLASH(int start, int end) {
 
 
 boot_policy_t read_boot_policy(){
-    int* data = READ_FLASH(0, sizeof(boot_policy_t));
 
-    boot_policy_t boot_policy;
-
-    memcpy(&boot_policy.identifier, data, sizeof(boot_policy.identifier));
-    memcpy(&boot_policy.rom_ext_slot, data + 1, sizeof(boot_policy.rom_ext_slot));
-    memcpy(&boot_policy.fail, data + 2, sizeof(boot_policy.fail));
-
-    return boot_policy;
 }
 
 
