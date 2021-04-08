@@ -127,7 +127,7 @@ void __some_entry_func() { __rom_ext_called[__current_rom_ext] = 1; /*for CBMC P
 
 
 int final_jump_to_rom_ext(rom_ext_manifest_t current_rom_ext_manifest) { // Returns a boolean value.
-    __CPROVER_assume(current_rom_ext_manifest.image_code = &__some_entry_func); //for cbmc
+    __CPROVER_assume(current_rom_ext_manifest.image_code == &__some_entry_func); //for cbmc
     
     //Execute rom ext code step 2.iii.e
     rom_ext_boot_func* rom_ext_entry = (rom_ext_boot_func*)current_rom_ext_manifest.image_code;
@@ -239,9 +239,12 @@ int __help_all_pmp_inactive(){
 }
 
 
+void dangerFunction() {
+    __REACHABILITY_CHECK
+}
+
 void __func_fail() { __boot_failed_called[__current_rom_ext] = 1; } //used for CBMC
 void __func_fail_rom_ext(rom_ext_manifest_t _) { __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
-
 
 void PROOF_HARNESS() {
     boot_policy_t boot_policy = read_boot_policy();
@@ -251,8 +254,9 @@ void PROOF_HARNESS() {
 
     int __non_det;
     switch(__non_det){
-      //case 1: //points to some random part of memory - This breaks the security
-      //  break;
+      case 1: //points to some random part of memory - This breaks the security      
+          //Should we still assume that the function pointers are valid???
+        break;
       default: //points to valid functions
         __CPROVER_assume(boot_policy.fail == &__func_fail);
         __CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
@@ -349,9 +353,6 @@ Result should be: 18 out of 778 failed.
 --unwindset memcmp.0:25 is due to memcmp in HASH.
 */
 
-void dangerFunction(){
-  __REACHABILITY_CHECK
-}
 
 void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_try ){
     __CPROVER_precondition(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0, 
@@ -450,4 +451,23 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
     //Step 2.iv
     boot_failed(boot_policy);
+}
+
+void addressof() {
+    //If none adresses are taken: 24/192
+    &dangerFunction; // 25/192
+    &mask_rom_boot; // 25/192
+    &final_jump_to_rom_ext; // 25/192
+    &boot_failed; // 25/192
+    &boot_failed_rom_ext_terminated; // 25/192
+    &pmp_unlock_rom_ext; // 26/192
+    &enable_memory_protection; // 26/192
+    &check_rom_ext_manifest;
+    &CHECK_PUB_KEY_VALID;
+    &verify_rom_ext_signature;
+    &read_boot_policy;
+    &rom_ext_manifests_to_try;
+    &READ_FLASH;
+    &read_pub_key;
+    &WRITE_PMP_REGION; // 26/192
 }
