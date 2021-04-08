@@ -127,6 +127,7 @@ void __some_entry_func() { __rom_ext_called[__current_rom_ext] = 1; /*for CBMC P
 
 
 int final_jump_to_rom_ext(rom_ext_manifest_t current_rom_ext_manifest) { // Returns a boolean value.
+    //This assumption causes reachability checks to succeed. If == is =, then they fail.
     __CPROVER_assume(current_rom_ext_manifest.image_code == &__some_entry_func); //for cbmc
     
     //Execute rom ext code step 2.iii.e
@@ -255,7 +256,7 @@ void PROOF_HARNESS() {
     int __non_det;
     switch(__non_det){
       case 1: //points to some random part of memory - This breaks the security      
-          //Should we still assume that the function pointers are valid???
+              //Should we still assume that the function pointers are valid???
         break;
       default: //points to valid functions
         __CPROVER_assume(boot_policy.fail == &__func_fail);
@@ -455,12 +456,12 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
 void addressof() {
     //If none adresses are taken: 24/192
-    &dangerFunction; // 25/192
+    &dangerFunction; // 25/192 //the extra is the reachability check in dangerFunction
     &mask_rom_boot; // 25/192
     &final_jump_to_rom_ext; // 25/192
     &boot_failed; // 25/192
     &boot_failed_rom_ext_terminated; // 25/192
-    &pmp_unlock_rom_ext; // 26/192
+    &pmp_unlock_rom_ext; // 26/192 //the extra is 
     &enable_memory_protection; // 26/192
     &check_rom_ext_manifest;
     &CHECK_PUB_KEY_VALID;
