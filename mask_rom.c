@@ -60,7 +60,7 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
 }
 
 
-extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
+extern int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
     for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
         if (__pkey_whitelist[i].exponent != rom_ext_pub_key.exponent)
             continue;
@@ -409,7 +409,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         "PROPERTY 2: Public key modulus is 3072-bits.");    
 
         //Step 2.iii.b
-        if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
+        if (!check_pub_key_valid(rom_ext_pub_key)) {
             __REACHABILITY_CHECK
 
             __CPROVER_assert(!__help_pkey_valid(rom_ext_pub_key),
@@ -464,7 +464,7 @@ void addressof() {
     &pmp_unlock_rom_ext; // 26/192 //the extra is 
     &enable_memory_protection; // 26/192
     &check_rom_ext_manifest;
-    &CHECK_PUB_KEY_VALID;
+    &check_pub_key_valid;
     &verify_rom_ext_signature;
     &read_boot_policy;
     &rom_ext_manifests_to_try;
