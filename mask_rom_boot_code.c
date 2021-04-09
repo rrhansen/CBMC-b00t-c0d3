@@ -86,7 +86,7 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
     return current_rom_ext_manifest.pub_signature_key;
 }
 
-extern int CHECK_PUB_KEY_VALID(pub_key_t rom_ext_pub_key); // returns a boolean value
+extern int check_pub_key_valid(pub_key_t rom_ext_pub_key); // returns a boolean value
 
 extern char* HASH(char* message);
 
@@ -135,7 +135,7 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 
 void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_try) {
   
-    //Måske step 2.iii
+    //MÃ¥ske step 2.iii
     for (int i = 0; i < rom_exts_to_try.size; i++)
     {
         rom_ext_manifest_t current_rom_ext_manifest = rom_exts_to_try.rom_exts_mfs[i];
@@ -148,7 +148,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
         pub_key_t rom_ext_pub_key = read_pub_key(current_rom_ext_manifest);
 
         //Step 2.iii.b
-        if (!CHECK_PUB_KEY_VALID(rom_ext_pub_key)) {
+        if (!check_pub_key_valid(rom_ext_pub_key)) {
             continue;
         }
 
