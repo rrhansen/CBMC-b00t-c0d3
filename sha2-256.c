@@ -158,35 +158,35 @@ void SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[])
 }
 
 BYTE* SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf){
-  int __expected_size = 
-    sizeof(__current_rom_ext_mf.pub_signature_key)+sizeof(__current_rom_ext_mf.image_length)+__current_rom_ext_mf.image_length;
-  
-  __CPROVER_assert(memcmp(
-      mes, 
-      &__current_rom_ext_mf.pub_signature_key, 
-      sizeof(__current_rom_ext_mf.pub_signature_key)) == 0,
-      "PROPERTY 4: Message contains the key");
+	int __expected_size = 
+	sizeof(__current_rom_ext_mf.pub_signature_key)+sizeof(__current_rom_ext_mf.image_length)+__current_rom_ext_mf.image_length;
 
-  __CPROVER_assert(memcmp(
-      mes + sizeof(__current_rom_ext_mf.pub_signature_key),
-      &__current_rom_ext_mf.image_length,
-      sizeof(__current_rom_ext_mf.image_length)) == 0,
-      "PROPERTY 4: Message contains the Image length");
+	__CPROVER_assert(memcmp(
+		mes, 
+		&__current_rom_ext_mf.pub_signature_key, 
+		sizeof(__current_rom_ext_mf.pub_signature_key)) == 0,
+		"PROPERTY 4: Message contains the key");
 
-  __CPROVER_assert(memcmp(
-      mes + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
-      __current_rom_ext_mf.image_code,
-      __current_rom_ext_mf.image_length) == 0,
-      "PROPERTY 4: Message contains the Image code");
-     
-  __CPROVER_assert(size == __expected_size,
-  "PROPERTY 4: Message size parameter is as expected.");
+	__CPROVER_assert(memcmp(
+		mes + sizeof(__current_rom_ext_mf.pub_signature_key),
+		&__current_rom_ext_mf.image_length,
+		sizeof(__current_rom_ext_mf.image_length)) == 0,
+		"PROPERTY 4: Message contains the Image length");
+
+	__CPROVER_assert(memcmp(
+		mes + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
+		__current_rom_ext_mf.image_code,
+		__current_rom_ext_mf.image_length) == 0,
+		"PROPERTY 4: Message contains the Image code");
+
+	__CPROVER_assert(size == __expected_size,
+	"PROPERTY 4: Message size parameter is as expected.");
  
-  __CPROVER_assert(__CPROVER_OBJECT_SIZE(mes) == __expected_size,
-  "PROPERTY 4: Size of message is as expected.");
+	__CPROVER_assert(__CPROVER_OBJECT_SIZE(mes) == __expected_size,
+	"PROPERTY 4: Size of message is as expected.");
 
 
-  BYTE* buff = malloc(SHA2_256_BLOCK_SIZE * sizeof(BYTE));
+	BYTE* buff = malloc(SHA2_256_BLOCK_SIZE * sizeof(BYTE));
 	SHA2_256_CTX ctx;
 
 	SHA2_256_init(&ctx);
@@ -194,13 +194,13 @@ BYTE* SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf){
 	SHA2_256_final(&ctx, buff);
 
 
-  __CPROVER_assert(__CPROVER_OBJECT_SIZE(buff)==256/8, 
-  "PROPERTY 3: Hash is 256 bits");   
+	__CPROVER_assert(__CPROVER_OBJECT_SIZE(buff)==256/8, 
+	"PROPERTY 3: Hash is 256 bits");   
 
-  __CPROVER_assert(__CPROVER_r_ok(buff, 256/8),
-  "PROPERTY 3: hash is in readable address");
-  
-  __REACHABILITY_CHECK
-  
-  return buff;
+	__CPROVER_assert(__CPROVER_r_ok(buff, 256/8),
+	"PROPERTY 3: hash is in readable address");
+
+	__REACHABILITY_CHECK
+		
+	return buff;
 }
