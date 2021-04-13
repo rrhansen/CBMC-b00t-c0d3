@@ -172,7 +172,7 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 
 
 int __help_sign_valid(signature_t sign) { //used for CBMC assertion + postcondition
-	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != RSA_SIZE * 32)
+	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != 3072) //Signature must be 3072 bits
 		return 0;
 
 	for (int i = 0; i < RSA_SIZE; i++) {
@@ -184,6 +184,13 @@ int __help_sign_valid(signature_t sign) { //used for CBMC assertion + postcondit
 
 
 int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postcondition
+	// Public key exponent must be 32 bits.");
+	if(sizeof(pkey.exponent) * 8 != 32)
+		return 0;
+	// Public key modulus must be 3072-bits.");
+	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != 3072)
+		return 0;
+
 	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
 		if (__pkey_whitelist[i].exponent != pkey.exponent)
 			continue;
@@ -267,7 +274,6 @@ void PROOF_HARNESS() {
 	
 	for(int i = 0; i < rom_exts_to_try.size; i++){
 		__CPROVER_assume(MAX_IMAGE_LENGTH > rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
-		rom_exts_to_try.rom_exts_mfs[i].image_code = malloc(sizeof(char) *rom_exts_to_try.rom_exts_mfs[i].image_length );
 	}
 
 	mask_rom_boot(boot_policy, rom_exts_to_try);
@@ -382,8 +388,6 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
 		signature_t __signature = current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
 
-		__CPROVER_assert(__CPROVER_OBJECT_SIZE(__signature.value) * 8 == RSA_SIZE*32,
-		"PROPERTY 1: Signature is 3072-bits");
 
 		if (!check_rom_ext_manifest(current_rom_ext_manifest)) {
 			__REACHABILITY_CHECK
@@ -400,13 +404,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 		"PROPERTY 1: Continue verification if signature is valid");
 
 		//Step 2.iii.b
-		pub_key_t rom_ext_pub_key = read_pub_key(current_rom_ext_manifest);
-
-		__CPROVER_assert(sizeof(rom_ext_pub_key.exponent) * 8 == 32,
-		"PROPERTY 2: Public key exponent is 32 bits.");
-
-		__CPROVER_assert((sizeof(rom_ext_pub_key) - sizeof(rom_ext_pub_key.exponent)) * 8 == RSA_SIZE*32,
-		"PROPERTY 2: Public key modulus is 3072-bits.");	
+		pub_key_t rom_ext_pub_key = read_pub_key(current_rom_ext_manifest);	
 
 		//Step 2.iii.b
 		if (!check_pub_key_valid(rom_ext_pub_key)) {
