@@ -13,8 +13,7 @@ doc/security/specs/secure_boot/index.md
 
 
 //Whitelist in ROM
-#define __PKEY_WHITELIST_SIZE 5
-static pub_key_t __pkey_whitelist[__PKEY_WHITELIST_SIZE];
+#define PKEY_WHITELIST_SIZE 5
 
 
 //for CBMC
@@ -42,14 +41,7 @@ typedef void(fail_func)(void);
 typedef void(fail_rom_ext_terminated_func)(rom_ext_manifest_t); 
 
 
-extern int* READ_FLASH(int start, int end) {
-	return malloc(end - start); //for CBMC to model reading
-};
-
-
-boot_policy_t read_boot_policy(){
-
-}
+boot_policy_t read_boot_policy() {}
 
 
 rom_exts_manifests_t rom_ext_manifests_to_try(boot_policy_t boot_policy) {}
@@ -59,15 +51,22 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
 	return current_rom_ext_manifest.pub_signature_key;
 }
 
+pub_key_t* get_whitelist() {
+	pub_key_t* pkey_whitelist = (pub_key_t*) malloc(sizeof(pub_key_t) * PKEY_WHITELIST_SIZE);
+	return pkey_whitelist;
+}
+
 
 extern int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
-	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
-		if (__pkey_whitelist[i].exponent != rom_ext_pub_key.exponent)
+	pub_key_t* pkey_whitelist = get_whitelist();
+
+	for (int i = 0; i < PKEY_WHITELIST_SIZE; i++) {
+		if (pkey_whitelist[i].exponent != rom_ext_pub_key.exponent)
 			continue;
 
 		int j = 0;
 		for (j = 0; j < RSA_SIZE; j++) {
-			if (__pkey_whitelist[i].modulus[j] != rom_ext_pub_key.modulus[j])
+			if (pkey_whitelist[i].modulus[j] != rom_ext_pub_key.modulus[j])
 				break;
 		}
 
@@ -172,7 +171,7 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 
 
 int __help_sign_valid(signature_t sign) { //used for CBMC assertion + postcondition
-	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != 3072) //Signature must be 3072 bits
+	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != RSA_SIZE*32) //Signature must be 3072 bits
 		return 0;
 
 	for (int i = 0; i < RSA_SIZE; i++) {
@@ -188,16 +187,18 @@ int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postconditio
 	if(sizeof(pkey.exponent) * 8 != 32)
 		return 0;
 	// Public key modulus must be 3072-bits.");
-	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != 3072)
+	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != RSA_SIZE*32)
 		return 0;
 
-	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
-		if (__pkey_whitelist[i].exponent != pkey.exponent)
+	pub_key_t* pkey_whitelist = get_whitelist();
+
+	for (int i = 0; i < PKEY_WHITELIST_SIZE; i++) {
+		if (pkey_whitelist[i].exponent != pkey.exponent)
 			continue;
 
 		int j = 0;
 		for (j = 0; j < RSA_SIZE; j++) {
-			if (__pkey_whitelist[i].modulus[j] != pkey.modulus[j])
+			if (pkey_whitelist[i].modulus[j] != pkey.modulus[j])
 				break;
 		}
 
@@ -244,6 +245,10 @@ int __help_all_pmp_inactive(){
 		}
 	}
 	return 1;
+}
+
+int __help_verify_rom_ext_signature(int i) {
+	return i;
 }
 
 
@@ -424,9 +429,14 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 		//Step 2.iii.b
 		if (!verify_rom_ext_signature(rom_ext_pub_key, current_rom_ext_manifest)) {
 			__REACHABILITY_CHECK
+			__CPROVER_assert(!__help_verify_rom_ext_signature(0), 
+			"PROPERTY 5: Stop verification if signature is invalid");
 			continue;
 		}
 		__REACHABILITY_CHECK
+
+		__CPROVER_assert(__help_verify_rom_ext_signature(1),
+		"PROPERTY 5: Continue verification if signature is invalid");
 		__validated_rom_exts[i] = 1; //for CBMC
 
 		//Step 2.iii.d
@@ -453,20 +463,18 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 }
 
 void addressof() {
-	//If none adresses are taken: 24/192
-	&dangerFunction; // 25/192 //the extra is the reachability check in dangerFunction
-	&mask_rom_boot; // 25/192
-	&final_jump_to_rom_ext; // 25/192
-	&boot_failed; // 25/192
-	&boot_failed_rom_ext_terminated; // 25/192
-	&pmp_unlock_rom_ext; // 26/192 //the extra is 
-	&enable_memory_protection; // 26/192
+	/*&dangerFunction; 
+	&mask_rom_boot;
+	&final_jump_to_rom_ext; 
+	&boot_failed; 
+	&boot_failed_rom_ext_terminated; 
+	&pmp_unlock_rom_ext; 
+	&enable_memory_protection; 
 	&check_rom_ext_manifest;
 	&check_pub_key_valid;
 	&verify_rom_ext_signature;
 	&read_boot_policy;
 	&rom_ext_manifests_to_try;
-	&READ_FLASH;
 	&read_pub_key;
-	&WRITE_PMP_REGION; // 26/192
+	&WRITE_PMP_REGION;*/
 }
