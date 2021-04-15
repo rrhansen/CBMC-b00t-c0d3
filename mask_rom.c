@@ -14,7 +14,7 @@ doc/security/specs/secure_boot/index.md
 
 //Whitelist in ROM
 #define PKEY_WHITELIST_SIZE 5
-
+static pub_key_t pkey_whitelist[PKEY_WHITELIST_SIZE];
 
 //for CBMC
 int __current_rom_ext = 0;
@@ -51,8 +51,8 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
 	return current_rom_ext_manifest.pub_signature_key;
 }
 
+//Mocked function for reading pkey whitelist from maskrom.
 pub_key_t* get_whitelist() {
-	pub_key_t* pkey_whitelist = (pub_key_t*) malloc(sizeof(pub_key_t) * PKEY_WHITELIST_SIZE);
 	return pkey_whitelist;
 }
 
