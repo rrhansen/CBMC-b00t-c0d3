@@ -12,6 +12,7 @@ doc/security/specs/secure_boot/index.md
 #include "verify.h"
 
 
+
 //Whitelist in ROM
 #define PKEY_WHITELIST_SIZE 5
 static pub_key_t pkey_whitelist[PKEY_WHITELIST_SIZE];
@@ -25,6 +26,7 @@ int __rom_ext_fail_func[MAX_ROM_EXTS] = { }; //for CBMC PROPERTY 6
 int __boot_failed_called[MAX_ROM_EXTS] = { };
 int __validated_rom_exts[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
 int __rom_ext_returned[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
+int __verify_signature_called[MAX_ROM_EXTS] = { };
 int __imply(int a, int b) { return a ? b : 1; }
 
 
@@ -160,6 +162,17 @@ void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_
 	fail_func_entry(current_rom_ext_manifest);
 }
 
+int __valid_signature[MAX_ROM_EXTS] = { };
+
+int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest)
+{
+	__REACHABILITY_CHECK
+	int __result;
+	__valid_signature[__current_rom_ext] = __result;
+	__verify_signature_called[__current_rom_ext] = 1;
+	return __result;
+}
+
 
 int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 	for (int i = 0; i < RSA_SIZE; i++) {
@@ -247,10 +260,6 @@ int __help_all_pmp_inactive(){
 	return 1;
 }
 
-int __help_verify_rom_ext_signature(int i) {
-	return i;
-}
-
 
 void dangerFunction() {
 	__REACHABILITY_CHECK
@@ -296,6 +305,16 @@ void PROOF_HARNESS() {
 
 			__CPROVER_postcondition(__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
 			"Postcondition PROPERTY 2: rom_ext VALIDATED => valid key");
+
+			__CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature) &&
+									__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key) &&
+									__verify_signature_called[i],
+			"Postcondition PROPERTY 5: iff sign and key is valid then verify signature function is called");
+
+			__CPROVER_postcondition(__imply(!__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature) ||
+											!__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
+											!__verify_signature_called[i]),
+			"Postcondition PROPERTY 5: If sign or key is invalid then verify signature function is not called");
 
 			__CPROVER_postcondition(__rom_ext_called[i],
 			"Postcondition PROPERTY 6: rom_ext VALIDATED => rom ext code inititated");
@@ -360,6 +379,12 @@ cbmc mask_rom.c verify.c sha2-256.c --function PROOF_HARNESS --unwind 20 --unwin
 
 
 Result should be: 18 out of 778 failed.
+
+
+//To remove all the reachability checks that succeeds (i.e. fails):
+grep -v "0m: FAILURE" log.txt > log2.txt
+
+with log.txt containing output of cbmc command.
 
 
 --unwindset memcmp.0:25 is due to memcmp in HASH.
@@ -429,14 +454,14 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 		//Step 2.iii.b
 		if (!verify_rom_ext_signature(rom_ext_pub_key, current_rom_ext_manifest)) {
 			__REACHABILITY_CHECK
-			__CPROVER_assert(!__help_verify_rom_ext_signature(0), 
+			__CPROVER_assert(!__valid_signature[i], 
 			"PROPERTY 5: Stop verification if signature is invalid");
 			continue;
 		}
 		__REACHABILITY_CHECK
 
-		__CPROVER_assert(__help_verify_rom_ext_signature(1),
-		"PROPERTY 5: Continue verification if signature is invalid");
+		__CPROVER_assert(__valid_signature[i],
+		"PROPERTY 5: Continue verification if signature is valid");
 		__validated_rom_exts[i] = 1; //for CBMC
 
 		//Step 2.iii.d
