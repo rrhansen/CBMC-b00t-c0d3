@@ -295,6 +295,12 @@ void PROOF_HARNESS() {
 	"Postcondition: Should never check more rom_ext than there exist");
 
 	for (int i = 0; i < rom_exts_to_try.size; i++) {
+
+		__CPROVER_postcondition(__imply(!__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature) ||
+								!__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
+								!__verify_signature_called[i]),
+		"Postcondition PROPERTY 5: If sign or key is invalid then verify signature function is not called");
+
 		if (__validated_rom_exts[i]) { //validated - try to boot from
 			__REACHABILITY_CHECK
 
@@ -304,15 +310,8 @@ void PROOF_HARNESS() {
 			__CPROVER_postcondition(__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
 			"Postcondition PROPERTY 2: rom_ext VALIDATED => valid key");
 
-			__CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature) &&
-									__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key) &&
-									__verify_signature_called[i],
+			__CPROVER_postcondition(__verify_signature_called[i],
 			"Postcondition PROPERTY 5: iff sign and key is valid then verify signature function is called");
-
-			__CPROVER_postcondition(__imply(!__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature) ||
-											!__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
-											!__verify_signature_called[i]),
-			"Postcondition PROPERTY 5: If sign or key is invalid then verify signature function is not called");
 
 			__CPROVER_postcondition(__valid_signature[i],
 			"Postcondition PROPERTY 5: rom_ext VALIDATED => signature valid");
