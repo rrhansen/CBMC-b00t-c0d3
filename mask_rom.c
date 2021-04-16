@@ -15,7 +15,7 @@ doc/security/specs/secure_boot/index.md
 
 //Whitelist in ROM
 #define PKEY_WHITELIST_SIZE 5
-static pub_key_t pkey_whitelist[PKEY_WHITELIST_SIZE];
+static pub_key_t __pkey_whitelist[PKEY_WHITELIST_SIZE];
 
 //for CBMC
 int __current_rom_ext = 0;
@@ -28,6 +28,7 @@ int __validated_rom_exts[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
 int __rom_ext_returned[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
 int __verify_signature_called[MAX_ROM_EXTS] = { };
 int __imply(int a, int b) { return a ? b : 1; }
+int __valid_signature[MAX_ROM_EXTS] = { }; //result of verify_rom_ext_signature
 
 
 //The configured PMP regions for each rom ext.
@@ -55,7 +56,7 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
 
 //Mocked function for reading pkey whitelist from maskrom.
 pub_key_t* get_whitelist() {
-	return pkey_whitelist;
+	return __pkey_whitelist;
 }
 
 
@@ -161,8 +162,6 @@ void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_
 	fail_rom_ext_terminated_func* fail_func_entry = (fail_rom_ext_terminated_func*)boot_policy.fail_rom_ext_terminated;
 	fail_func_entry(current_rom_ext_manifest);
 }
-
-int __valid_signature[MAX_ROM_EXTS] = { };
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest)
 {
@@ -379,13 +378,6 @@ cbmc mask_rom.c verify.c sha2-256.c --function PROOF_HARNESS --unwind 20 --unwin
 
 
 Result should be: 18 out of 778 failed.
-
-
-//To remove all the reachability checks that succeeds (i.e. fails):
-grep -v "0m: FAILURE" log.txt > log2.txt
-
-with log.txt containing output of cbmc command.
-
 
 --unwindset memcmp.0:25 is due to memcmp in HASH.
 */

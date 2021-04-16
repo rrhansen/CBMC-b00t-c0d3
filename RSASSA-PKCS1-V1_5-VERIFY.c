@@ -3,45 +3,40 @@
 #include "memory.h"
 
 
-int __check_params(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len, rom_ext_manifest_t __current_rom_ext_mf) {
+int __is_valid_params(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len, rom_ext_manifest_t __current_rom_ext_mf) {
 
-	//Check that public key matches key in manifest
-	int __correct_exponent = exponent == __current_rom_ext_mf.pub_signature_key.exponent;
+	if (exponent != __current_rom_ext_mf.pub_signature_key.exponent)
+		return 0;
 
-	int __correct_modulus = memcmp(
-								modulus,
-								__current_rom_ext_mf.pub_signature_key.modulus,
-								RSA_SIZE) == 0;
+	if (memcmp(modulus,
+		__current_rom_ext_mf.pub_signature_key.modulus,
+		RSA_SIZE) != 0)
+		return 0;
 
-	//Check that signature matches matches signature in manifest 
-	int __correct_signature = memcmp(
-								signature,
-								__current_rom_ext_mf.signature.value,
-								RSA_SIZE) == 0;
+	if (memcmp(signature,
+		__current_rom_ext_mf.signature.value,
+		RSA_SIZE) != 0)
+		return 0;
 
-
-	//Check that message is correct
-	int __correct_msg1 = memcmp(
-		message,
+	if (memcmp(message,
 		&__current_rom_ext_mf.pub_signature_key,
-		sizeof(__current_rom_ext_mf.pub_signature_key)
-	) == 0;
+		sizeof(__current_rom_ext_mf.pub_signature_key)) != 0)
+		return 0;
 
-	int __correct_msg2 = memcmp(
+	if (memcmp(
 		message + sizeof(__current_rom_ext_mf.pub_signature_key),
 		&__current_rom_ext_mf.image_length,
-		sizeof(__current_rom_ext_mf.image_length)
-	) == 0;
+		sizeof(__current_rom_ext_mf.image_length)) != 0)
+		return 0;
 
-	int __correct_msg3 = memcmp(
+	if (memcmp(
 		message + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
 		__current_rom_ext_mf.image_code,
-		__current_rom_ext_mf.image_length
-	) == 0;
+		__current_rom_ext_mf.image_length) != 0)
+		return 0;
 
-	return __correct_exponent && __correct_modulus && __correct_signature &&
-		__correct_msg1 && __correct_msg2 && __correct_msg3;
-
+	
+	return 1;
 }
 
 
@@ -66,7 +61,8 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 	__CPROVER_assert((sizeof(pub_key_t) - sizeof(exponent)) * 8 == RSA_SIZE*32,
 	"PROPERTY 5: Public key modulus is 3072-bits."); 
 
-	__CPROVER_assert(__check_params(exponent, modulus, message, message_len, signature, signature_len, __current_rom_ext_mf),
+	__CPROVER_assert(__is_valid_params(exponent, modulus, message, message_len, signature,
+									   signature_len, __current_rom_ext_mf),
 	"PROPERTY 5: Check that key, signature, and message is correct.");
 
 	__REACHABILITY_CHECK
