@@ -183,7 +183,7 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 
 
 int __help_sign_valid(signature_t sign) { //used for CBMC assertion + postcondition
-	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != RSA_SIZE*32) //Signature must be 3072 bits
+	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != 3072) //Signature must be 3072 bits
 		return 0;
 
 	for (int i = 0; i < RSA_SIZE; i++) {
@@ -199,7 +199,7 @@ int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postconditio
 	if(sizeof(pkey.exponent) * 8 != 32)
 		return 0;
 	// Public key modulus must be 3072-bits.");
-	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != RSA_SIZE*32)
+	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != 3072)
 		return 0;
 
 	pub_key_t* pkey_whitelist = get_whitelist();
