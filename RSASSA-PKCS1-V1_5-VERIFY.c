@@ -2,6 +2,44 @@
 #include "RSASSA-PKCS1-V1_5-VERIFY.h"
 #include "memory.h"
 
+
+int __is_valid_params(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len, rom_ext_manifest_t __current_rom_ext_mf) {
+
+	if (exponent != __current_rom_ext_mf.pub_signature_key.exponent)
+		return 0;
+
+	if (memcmp(modulus,
+		__current_rom_ext_mf.pub_signature_key.modulus,
+		RSA_SIZE) != 0)
+		return 0;
+
+	if (memcmp(signature,
+		__current_rom_ext_mf.signature.value,
+		RSA_SIZE) != 0)
+		return 0;
+
+	if (memcmp(message,
+		&__current_rom_ext_mf.pub_signature_key,
+		sizeof(__current_rom_ext_mf.pub_signature_key)) != 0)
+		return 0;
+
+	if (memcmp(
+		message + sizeof(__current_rom_ext_mf.pub_signature_key),
+		&__current_rom_ext_mf.image_length,
+		sizeof(__current_rom_ext_mf.image_length)) != 0)
+		return 0;
+
+	if (memcmp(
+		message + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
+		__current_rom_ext_mf.image_code,
+		__current_rom_ext_mf.image_length) != 0)
+		return 0;
+
+	
+	return 1;
+}
+
+
 char* RSA_3072_DECRYPT(int32_t* signature, int signature_len, int32_t exponent, int32_t* modulus){
 	char* decrypt = malloc(256/8); //model it to be ok for PROPERTY 5
 	return decrypt;
@@ -23,13 +61,14 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 	__CPROVER_assert((sizeof(pub_key_t) - sizeof(exponent)) * 8 == 3072,
 	"PROPERTY 5: Public key modulus is 3072-bits."); 
 
-<<<<<<< Updated upstream
-=======
 	__CPROVER_assert(__is_valid_params(exponent, modulus, message, message_len, signature,
 									   signature_len, __current_rom_ext_mf),
 	"PROPERTY 5: Check that key, signature, and message matches those from the manifest.");
 
->>>>>>> Stashed changes
+	__CPROVER_assert(__is_valid_params(exponent, modulus, message, message_len, signature,
+									   signature_len, __current_rom_ext_mf),
+	"PROPERTY 5: Check that key, signature, and message is correct.");
+
 	__REACHABILITY_CHECK
 
 	if(signature_len != RSA_SIZE){

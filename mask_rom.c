@@ -16,7 +16,6 @@ doc/security/specs/secure_boot/index.md
 #define __PKEY_WHITELIST_SIZE 5
 static pub_key_t __pkey_whitelist[__PKEY_WHITELIST_SIZE];
 
-
 //for CBMC
 int __current_rom_ext = 0;
 rom_ext_manifest_t __current_rom_ext_mf;
@@ -26,7 +25,9 @@ int __rom_ext_fail_func[MAX_ROM_EXTS] = { }; //for CBMC PROPERTY 6
 int __boot_failed_called[MAX_ROM_EXTS] = { };
 int __validated_rom_exts[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
 int __rom_ext_returned[MAX_ROM_EXTS] = { }; //used for CBMC postcondition
+int __verify_signature_called[MAX_ROM_EXTS] = { };
 int __imply(int a, int b) { return a ? b : 1; }
+int __valid_signature[MAX_ROM_EXTS] = { }; //result of verify_rom_ext_signature
 
 
 //The configured PMP regions for each rom ext.
@@ -42,14 +43,7 @@ typedef void(fail_func)(void);
 typedef void(fail_rom_ext_terminated_func)(rom_ext_manifest_t); 
 
 
-extern int* READ_FLASH(int start, int end) {
-	return malloc(end - start); //for CBMC to model reading
-};
-
-
-boot_policy_t read_boot_policy(){
-
-}
+boot_policy_t read_boot_policy() {}
 
 
 rom_exts_manifests_t rom_ext_manifests_to_try(boot_policy_t boot_policy) {}
@@ -59,15 +53,22 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
 	return current_rom_ext_manifest.pub_signature_key;
 }
 
+//Mocked function for reading pkey whitelist from maskrom.
+pub_key_t* get_whitelist() {
+	return __pkey_whitelist;
+}
+
 
 extern int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
+	pub_key_t* pkey_whitelist = get_whitelist();
+
 	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
-		if (__pkey_whitelist[i].exponent != rom_ext_pub_key.exponent)
+		if (pkey_whitelist[i].exponent != rom_ext_pub_key.exponent)
 			continue;
 
 		int j = 0;
 		for (j = 0; j < RSA_SIZE; j++) {
-			if (__pkey_whitelist[i].modulus[j] != rom_ext_pub_key.modulus[j])
+			if (pkey_whitelist[i].modulus[j] != rom_ext_pub_key.modulus[j])
 				break;
 		}
 
@@ -161,6 +162,15 @@ void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_
 	fail_func_entry(current_rom_ext_manifest);
 }
 
+int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest)
+{
+	__REACHABILITY_CHECK
+	int __result;
+	__valid_signature[__current_rom_ext] = __result;
+	__verify_signature_called[__current_rom_ext] = 1;
+	return __result;
+}
+
 
 int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 	for (int i = 0; i < RSA_SIZE; i++) {
@@ -191,13 +201,15 @@ int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postconditio
 	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != 3072)
 		return 0;
 
+	pub_key_t* pkey_whitelist = get_whitelist();
+
 	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
-		if (__pkey_whitelist[i].exponent != pkey.exponent)
+		if (pkey_whitelist[i].exponent != pkey.exponent)
 			continue;
 
 		int j = 0;
 		for (j = 0; j < RSA_SIZE; j++) {
-			if (__pkey_whitelist[i].modulus[j] != pkey.modulus[j])
+			if (pkey_whitelist[i].modulus[j] != pkey.modulus[j])
 				break;
 		}
 
@@ -292,8 +304,6 @@ void PROOF_HARNESS() {
 			__CPROVER_postcondition(__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
 			"Postcondition PROPERTY 2: rom_ext VALIDATED => valid key");
 
-<<<<<<< Updated upstream
-=======
 			__CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature) &&
 									__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key) &&
 									__verify_signature_called[i],
@@ -307,7 +317,6 @@ void PROOF_HARNESS() {
 			__CPROVER_postcondition(__valid_signature[i],
 			"Postcondition PROPERTY 5: rom_ext VALIDATED => signature valid");
 
->>>>>>> Stashed changes
 			__CPROVER_postcondition(__rom_ext_called[i],
 			"Postcondition PROPERTY 6: rom_ext VALIDATED => rom ext code inititated");
 
@@ -379,7 +388,6 @@ cbmc mask_rom.c verify.c sha2-256.c --function PROOF_HARNESS --unwind 20 --unwin
 
 Result should be: 18 out of 778 failed.
 
-
 --unwindset memcmp.0:25 is due to memcmp in HASH.
 */
 
@@ -447,9 +455,14 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 		//Step 2.iii.b
 		if (!verify_rom_ext_signature(rom_ext_pub_key, current_rom_ext_manifest)) {
 			__REACHABILITY_CHECK
+			__CPROVER_assert(!__valid_signature[i], 
+			"PROPERTY 5: Stop verification if signature is invalid");
 			continue;
 		}
 		__REACHABILITY_CHECK
+
+		__CPROVER_assert(__valid_signature[i],
+		"PROPERTY 5: Continue verification if signature is valid");
 		__validated_rom_exts[i] = 1; //for CBMC
 
 		//Step 2.iii.d
@@ -476,20 +489,18 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 }
 
 void addressof() {
-	//If none adresses are taken: 24/192
-	&dangerFunction; // 25/192 //the extra is the reachability check in dangerFunction
-	&mask_rom_boot; // 25/192
-	&final_jump_to_rom_ext; // 25/192
-	&boot_failed; // 25/192
-	&boot_failed_rom_ext_terminated; // 25/192
-	&pmp_unlock_rom_ext; // 26/192 //the extra is 
-	&enable_memory_protection; // 26/192
+	/*&dangerFunction; 
+	&mask_rom_boot;
+	&final_jump_to_rom_ext; 
+	&boot_failed; 
+	&boot_failed_rom_ext_terminated; 
+	&pmp_unlock_rom_ext; 
+	&enable_memory_protection; 
 	&check_rom_ext_manifest;
 	&check_pub_key_valid;
 	&verify_rom_ext_signature;
 	&read_boot_policy;
 	&rom_ext_manifests_to_try;
-	&READ_FLASH;
 	&read_pub_key;
-	&WRITE_PMP_REGION; // 26/192
+	&WRITE_PMP_REGION;*/
 }
