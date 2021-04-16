@@ -62,7 +62,7 @@ pub_key_t* get_whitelist() {
 extern int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
 	pub_key_t* pkey_whitelist = get_whitelist();
 
-	for (int i = 0; i < PKEY_WHITELIST_SIZE; i++) {
+	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
 		if (pkey_whitelist[i].exponent != rom_ext_pub_key.exponent)
 			continue;
 
@@ -203,7 +203,7 @@ int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postconditio
 
 	pub_key_t* pkey_whitelist = get_whitelist();
 
-	for (int i = 0; i < PKEY_WHITELIST_SIZE; i++) {
+	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
 		if (pkey_whitelist[i].exponent != pkey.exponent)
 			continue;
 
