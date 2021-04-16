@@ -12,10 +12,9 @@ doc/security/specs/secure_boot/index.md
 #include "verify.h"
 
 
-
 //Whitelist in ROM
 #define __PKEY_WHITELIST_SIZE 5
-static pub_key_t __pkey_whitelist[PKEY_WHITELIST_SIZE];
+static pub_key_t __pkey_whitelist[__PKEY_WHITELIST_SIZE];
 
 //for CBMC
 int __current_rom_ext = 0;
