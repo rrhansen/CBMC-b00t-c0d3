@@ -23,6 +23,13 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 	__CPROVER_assert((sizeof(pub_key_t) - sizeof(exponent)) * 8 == 3072,
 	"PROPERTY 5: Public key modulus is 3072-bits."); 
 
+<<<<<<< Updated upstream
+=======
+	__CPROVER_assert(__is_valid_params(exponent, modulus, message, message_len, signature,
+									   signature_len, __current_rom_ext_mf),
+	"PROPERTY 5: Check that key, signature, and message matches those from the manifest.");
+
+>>>>>>> Stashed changes
 	__REACHABILITY_CHECK
 
 	if(signature_len != RSA_SIZE){
@@ -34,8 +41,14 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 	}
 	__REACHABILITY_CHECK
 
-	int32_t* decrypt = RSA_3072_DECRYPT(signature, signature_len, exponent, modulus);
+	char* decrypt = RSA_3072_DECRYPT(signature, signature_len, exponent, modulus);
 	char* hash = SHA2_256(message, message_len, __current_rom_ext_mf); //message_len in bytes
+
+	__CPROVER_assert(!__CPROVER_array_equal(decrypt, signature), 
+	"PROPERTY 5: Decrypted signature is different from signature");
+
+	__CPROVER_assert(!__CPROVER_array_equal(hash, message), 
+	"PROPERTY 5: Hash is different from original message");
 
 	__CPROVER_assert(__CPROVER_OBJECT_SIZE(decrypt)==256/8, 
 	"PROPERTY 5: Decrypted message is 256 bits"); 

@@ -292,6 +292,22 @@ void PROOF_HARNESS() {
 			__CPROVER_postcondition(__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
 			"Postcondition PROPERTY 2: rom_ext VALIDATED => valid key");
 
+<<<<<<< Updated upstream
+=======
+			__CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature) &&
+									__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key) &&
+									__verify_signature_called[i],
+			"Postcondition PROPERTY 5: iff sign and key is valid then verify signature function is called");
+
+			__CPROVER_postcondition(__imply(!__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature) ||
+											!__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
+											!__verify_signature_called[i]),
+			"Postcondition PROPERTY 5: If sign or key is invalid then verify signature function is not called");
+
+			__CPROVER_postcondition(__valid_signature[i],
+			"Postcondition PROPERTY 5: rom_ext VALIDATED => signature valid");
+
+>>>>>>> Stashed changes
 			__CPROVER_postcondition(__rom_ext_called[i],
 			"Postcondition PROPERTY 6: rom_ext VALIDATED => rom ext code inititated");
 
@@ -310,6 +326,9 @@ void PROOF_HARNESS() {
 		}
 		else { //invalidated - unsafe to boot from
 			__REACHABILITY_CHECK
+
+			__CPROVER_postcondition(!__valid_signature[i],
+			"Postcondition PROPERTY 5: rom_ext VALIDATED => signature invalid");
 
 			__CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]),
 			"Postcondition PROPERTY 6: (invalid rom _ext and rom_ext code !return) => that rom_ext term func not called");
@@ -340,17 +359,21 @@ void PROOF_HARNESS() {
 PROPERTY 1, 2, 6, 7, 8, 9, 10
 
 RSA_SIZE = 96
+Run:
 cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 
 RSA_SIZE = 5
+Run:
 cbmc mask_rom.c --function PROOF_HARNESS --unwind 20 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 
 
 PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 RSA_SIZE = 96
+Run:
 cbmc mask_rom.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
 
 RSA_SIZE = 5
+Run:
 cbmc mask_rom.c verify.c sha2-256.c --function PROOF_HARNESS --unwind 20 --unwindset memcmp.0:40 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
 
 
