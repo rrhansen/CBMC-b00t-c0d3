@@ -65,10 +65,6 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 									   signature_len, __current_rom_ext_mf),
 	"PROPERTY 5: Check that key, signature, and message matches those from the manifest.");
 
-	__CPROVER_assert(__is_valid_params(exponent, modulus, message, message_len, signature,
-									   signature_len, __current_rom_ext_mf),
-	"PROPERTY 5: Check that key, signature, and message is correct.");
-
 	__REACHABILITY_CHECK
 
 	if(signature_len != RSA_SIZE){
