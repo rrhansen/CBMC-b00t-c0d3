@@ -1,23 +1,25 @@
 #include "sha2-256.h"
+#include "memory_compare.h"
+
 
 BYTE* SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf) {
 	
 	int __expected_size =
 		sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length) + __current_rom_ext_mf.image_length;
 
-	__CPROVER_assert(memcmp(
+	__CPROVER_assert(cmp_key(
 		mes,
 		&__current_rom_ext_mf.pub_signature_key,
 		sizeof(__current_rom_ext_mf.pub_signature_key)) == 0,
 		"PROPERTY 4: Message contains the key");
 
-	__CPROVER_assert(memcmp(
+	__CPROVER_assert(cmp_image_len(
 		mes + sizeof(__current_rom_ext_mf.pub_signature_key),
 		&__current_rom_ext_mf.image_length,
 		sizeof(__current_rom_ext_mf.image_length)) == 0,
 		"PROPERTY 4: Message contains the Image length");
 
-	__CPROVER_assert(memcmp(
+	__CPROVER_assert(cmp_image_code(
 		mes + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
 		__current_rom_ext_mf.image_code,
 		__current_rom_ext_mf.image_length) == 0,

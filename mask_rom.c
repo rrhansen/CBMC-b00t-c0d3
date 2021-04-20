@@ -9,10 +9,10 @@ doc/security/specs/secure_boot/index.md
 */
 #include "sha2-256.h"
 #include "mask_rom.h"
-
+#include "memory_compare.h"
 
 //Whitelist in ROM
-#define __PKEY_WHITELIST_SIZE 5
+#define __PKEY_WHITELIST_SIZE 1
 static pub_key_t __pkey_whitelist[__PKEY_WHITELIST_SIZE];
 
 //for CBMC
@@ -41,8 +41,6 @@ typedef void(fail_func)(void);
 // Function type for entry point of boot policy fail rom ext terminated function.
 typedef void(fail_rom_ext_terminated_func)(rom_ext_manifest_t); 
 
-
-//////////////////////////////////////////////
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest) {
 	__CPROVER_precondition(MAX_IMAGE_LENGTH > manifest.image_length && manifest.image_length > 0,
@@ -90,28 +88,29 @@ int __is_valid_params(int32_t exponent, int32_t* modulus, char* message, int mes
 	if (exponent != __current_rom_ext_mf.pub_signature_key.exponent)
 		return 0;
 
-	if (memcmp(modulus,
+	if (cmp_modulus(modulus,
 		__current_rom_ext_mf.pub_signature_key.modulus,
-		RSA_SIZE) != 0)
+		RSA_SIZE*sizeof(int32_t)) != 0)
 		return 0;
 
-	if (memcmp(signature,
+	if (cmp_signature(signature,
 		__current_rom_ext_mf.signature.value,
-		RSA_SIZE) != 0)
+		RSA_SIZE * sizeof(int32_t)) != 0)
 		return 0;
 
-	if (memcmp(message,
+	//Message is: pkey+image_length+image_code
+	if (cmp_key(message,
 		&__current_rom_ext_mf.pub_signature_key,
 		sizeof(__current_rom_ext_mf.pub_signature_key)) != 0)
 		return 0;
 
-	if (memcmp(
+	if (cmp_image_len(
 		message + sizeof(__current_rom_ext_mf.pub_signature_key),
 		&__current_rom_ext_mf.image_length,
 		sizeof(__current_rom_ext_mf.image_length)) != 0)
 		return 0;
 
-	if (memcmp(
+	if (cmp_image_code(
 		message + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
 		__current_rom_ext_mf.image_code,
 		__current_rom_ext_mf.image_length) != 0)
@@ -179,13 +178,11 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 	__CPROVER_assert(__CPROVER_r_ok(hash, 256 / 8),
 		"PROPERTY 3: hash is in readable address");
 
-	if (memcmp(hash, decrypt, RSA_SIZE * sizeof(int32_t)) == 0)
+	if (cmp_hash_decrypt(hash, decrypt, 256 / 8) == 0)
 		return 1; //verified
 	else
 		return 0;
 }
-
-//////////////////////////////////////////////
 
 
 boot_policy_t read_boot_policy() {}
@@ -308,7 +305,7 @@ void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_
 }
 
 
-int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
+int sign_is_non_zero(rom_ext_manifest_t manifest) {
 	for (int i = 0; i < RSA_SIZE; i++) {
 		if (manifest.signature.value[i] != 0)
 			return 1; // If the signature[i] != 0 for one i, the manifest is valid.
@@ -317,7 +314,7 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 }
 
 
-int __help_sign_valid(signature_t sign) { //used for CBMC assertion + postcondition
+int __help_sign_ok_format(signature_t sign) { //used for CBMC assertion + postcondition
 	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != 3072) //Signature must be 3072 bits
 		return 0;
 
@@ -433,7 +430,7 @@ void PROOF_HARNESS() {
 
 	for (int i = 0; i < rom_exts_to_try.size; i++) {
 
-		__CPROVER_postcondition(__imply(!__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature) ||
+		__CPROVER_postcondition(__imply(!__help_sign_ok_format(rom_exts_to_try.rom_exts_mfs[i].signature) ||
 								!__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
 								!__verify_signature_called[i]),
 		"Postcondition PROPERTY 5: If sign or key is invalid then verify signature function is not called");
@@ -441,7 +438,7 @@ void PROOF_HARNESS() {
 		if (__validated_rom_exts[i]) { //validated - try to boot from
 			__REACHABILITY_CHECK
 
-			__CPROVER_postcondition(__help_sign_valid(rom_exts_to_try.rom_exts_mfs[i].signature),
+			__CPROVER_postcondition(__help_sign_ok_format(rom_exts_to_try.rom_exts_mfs[i].signature),
 			"Postcondition PROPERTY 1: rom_ext VALIDATED => valid signature");
 
 			__CPROVER_postcondition(__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
@@ -471,6 +468,11 @@ void PROOF_HARNESS() {
 		}
 		else { //invalidated - unsafe to boot from
 			__REACHABILITY_CHECK
+
+			__CPROVER_postcondition(!__help_sign_ok_format(rom_exts_to_try.rom_exts_mfs[i].signature) ||
+									!__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key) ||
+									!__valid_signature[i],
+			"Postcondition: rom_ext INVALIDATED => signature or key is invalid");
 
 			__CPROVER_postcondition(!__valid_signature[i],
 			"Postcondition PROPERTY 5: rom_ext INVALIDATED => signature invalid or not checked");
@@ -505,21 +507,21 @@ PROPERTY 1, 2, 6, 7, 8, 9, 10
 
 RSA_SIZE = 96
 Run:
-cbmc mask_rom.c mock_sha2-256.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c mock_sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
 
 RSA_SIZE = 5
-Run:
-cbmc mask_rom.c mock_sha2-256.c --function PROOF_HARNESS --unwind 20 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+Run: (OUTDATED)
+cbmc mask_rom.c mock_sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 30 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
 
 
 PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 RSA_SIZE = 96
-Run:
-cbmc mask_rom.c sha2-256.c --function PROOF_HARNESS --unwind 100 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
+Run: (OUTDATED)
+cbmc mask_rom.c sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
 
 RSA_SIZE = 5
-Run:
-cbmc mask_rom.c sha2-256.c --function PROOF_HARNESS --unwind 20 --unwindset memcmp.0:40 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
+Run: (OUTDATED)
+cbmc mask_rom.c sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 20 --unwindset memcmp.0:40 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
 
 
 Result should be: 18 out of 778 failed.
@@ -556,10 +558,10 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 		signature_t __signature = current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
 
 
-		if (!check_rom_ext_manifest(current_rom_ext_manifest)) {
+		if (!sign_is_non_zero(current_rom_ext_manifest)) {
 			__REACHABILITY_CHECK
 
-			__CPROVER_assert(!__help_sign_valid(current_rom_ext_manifest.signature),
+			__CPROVER_assert(!__help_sign_ok_format(current_rom_ext_manifest.signature),
 			"PROPERTY 1: Stop verification if signature is invalid");
 
 			continue;
@@ -567,7 +569,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
 		__REACHABILITY_CHECK
 
-		__CPROVER_assert(__help_sign_valid(current_rom_ext_manifest.signature),
+		__CPROVER_assert(__help_sign_ok_format(current_rom_ext_manifest.signature),
 		"PROPERTY 1: Continue verification if signature is valid");
 
 		//Step 2.iii.b
@@ -632,7 +634,7 @@ void addressof() {
 	&boot_failed_rom_ext_terminated; 
 	&pmp_unlock_rom_ext; 
 	&enable_memory_protection; 
-	&check_rom_ext_manifest;
+	&sign_is_non_zero;
 	&check_pub_key_valid;
 	&verify_rom_ext_signature;
 	&read_boot_policy;

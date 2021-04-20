@@ -9,9 +9,9 @@
 
 #define __REACHABILITY_CHECK __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 #define MAX_ROM_EXTS 1
-#define RSA_SIZE 5
+#define RSA_SIZE 96
 #define PMP_REGIONS 16
-#define MAX_IMAGE_LENGTH 10 //necessary constraint in order to terminate CBMC verification
+#define MAX_IMAGE_LENGTH 2 //necessary constraint in order to terminate CBMC verification
 
 
 //Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size
