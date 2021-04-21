@@ -9,7 +9,7 @@
 
 #define __REACHABILITY_CHECK __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 #define MAX_ROM_EXTS 1
-#define RSA_SIZE 96
+#define RSA_SIZE 5
 #define PMP_REGIONS 16
 #define MAX_IMAGE_LENGTH 2 //necessary constraint in order to terminate CBMC verification
 
@@ -63,7 +63,7 @@ typedef struct boot_policy_t {
 	//what to do if the ROM Ext unexpectedly returns
 	uint32_t fail_rom_ext_terminated_length;
 	char* fail_rom_ext_terminated;
-
+	
 } boot_policy_t;
 
 
