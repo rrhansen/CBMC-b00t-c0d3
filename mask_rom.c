@@ -511,7 +511,7 @@ cbmc mask_rom.c mock_sha2-256.c memory_compare.c --function PROOF_HARNESS --unwi
 
 RSA_SIZE = 5
 Run: 
-cbmc mask_rom.c mock_sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 30 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c mock_sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 30 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
 
 
 PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
