@@ -409,10 +409,15 @@ int checksum(boot_policy_t policy){
 	return checksum;
 }
 
-boot_policy_t __valid_boot_policy;
-
 int __help_verify_policy_valid(boot_policy_t policy){
-	return checksum(policy)==checksum(__valid_boot_policy);
+	int valid_checksum = policy.identifier;
+	valid_checksum += policy.rom_ext_slot;
+	valid_checksum += policy.fail_length;
+	valid_checksum += (int) &__func_fail;
+	valid_checksum += policy.fail_rom_ext_terminated_length;
+	valid_checksum += (int) &__func_fail_rom_ext;
+
+	return checksum(policy)==valid_checksum;
 }
 
 int verify_policy(boot_policy_t policy){
@@ -437,9 +442,6 @@ void PROOF_HARNESS() {
 			break;
 	}
 
-	__CPROVER_assume(__valid_boot_policy.fail  == &__func_fail);
-	__CPROVER_assume(__valid_boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
-	
 	for(int i = 0; i < rom_exts_to_try.size; i++){
 		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
 		rom_exts_to_try.rom_exts_mfs[i].image_code = malloc(sizeof(char) * rom_exts_to_try.rom_exts_mfs[i].image_length);
@@ -568,6 +570,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 	"Precondition PROPERTY 9: All PMP regions should be unset at beginning of mask_rom.");
 
 	if(!verify_policy(boot_policy)){
+		__REACHABILITY_CHECK
 		__CPROVER_assert(__help_verify_policy_valid(boot_policy) == 0,
 		"Boot policy checksum does not correspond to valid boot policy");
 		return;
