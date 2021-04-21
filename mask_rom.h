@@ -64,6 +64,7 @@ typedef struct boot_policy_t {
 	uint32_t fail_rom_ext_terminated_length;
 	char* fail_rom_ext_terminated;
 	
+	int checksum;
 } boot_policy_t;
 
 

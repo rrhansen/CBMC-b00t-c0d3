@@ -399,6 +399,27 @@ void dangerFunction() {
 void __func_fail() { __boot_failed_called[__current_rom_ext] = 1; } //used for CBMC
 void __func_fail_rom_ext(rom_ext_manifest_t _) { __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
 
+int checksum(boot_policy_t policy){
+	int checksum = policy.identifier;
+	checksum += policy.rom_ext_slot;
+	checksum += policy.fail_length;
+	checksum += (int) policy.fail;
+	checksum += policy.fail_rom_ext_terminated_length;
+	checksum += (int) policy.fail_rom_ext_terminated;
+	return checksum;
+}
+
+boot_policy_t __valid_boot_policy;
+
+int __help_verify_policy_valid(boot_policy_t policy){
+	return checksum(policy)==checksum(__valid_boot_policy);
+}
+
+int verify_policy(boot_policy_t policy){
+	int sum = checksum(policy);
+	return policy.checksum == sum;	
+}
+
 void PROOF_HARNESS() {
 	boot_policy_t boot_policy = read_boot_policy();
 	rom_exts_manifests_t rom_exts_to_try = rom_ext_manifests_to_try(boot_policy);
@@ -408,7 +429,7 @@ void PROOF_HARNESS() {
 	int __non_det;
 	switch(__non_det){
 		case 1: //points to some random part of memory - This breaks the security
-			//Should we still assume that the function pointers are valid???
+			boot_policy.checksum = 0; //i.e. the policy has been tampered and does not correspond to checksum
 			break;
 		default: //points to valid functions
 			__CPROVER_assume(boot_policy.fail == &__func_fail);
@@ -416,6 +437,8 @@ void PROOF_HARNESS() {
 			break;
 	}
 
+	__CPROVER_assume(__valid_boot_policy.fail  == &__func_fail);
+	__CPROVER_assume(__valid_boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
 	
 	for(int i = 0; i < rom_exts_to_try.size; i++){
 		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
@@ -543,6 +566,14 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 	//All pmp regions should be inactive at this point
 	__CPROVER_precondition(__help_all_pmp_inactive(),
 	"Precondition PROPERTY 9: All PMP regions should be unset at beginning of mask_rom.");
+
+	if(!verify_policy(boot_policy)){
+		__CPROVER_assert(__help_verify_policy_valid(boot_policy) == 0,
+		"Boot policy checksum does not correspond to valid boot policy");
+		return;
+	}
+	__CPROVER_assert(__help_verify_policy_valid(boot_policy) == 1,
+	"Boot policy checksum does correspond to valid boot policy");
 
 	enable_memory_protection();
 
