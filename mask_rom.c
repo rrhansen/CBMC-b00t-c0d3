@@ -43,7 +43,7 @@ typedef void(fail_rom_ext_terminated_func)(rom_ext_manifest_t);
 
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest) {
-	__CPROVER_precondition(MAX_IMAGE_LENGTH > manifest.image_length && manifest.image_length > 0,
+	__CPROVER_precondition(MAX_IMAGE_LENGTH >= manifest.image_length && manifest.image_length > 0,
 		"Precondition: Assumes rom ext image code is < 10 and > 0");
 
 	__CPROVER_precondition(__CPROVER_r_ok(manifest.image_code, manifest.image_length),
@@ -418,7 +418,7 @@ void PROOF_HARNESS() {
 
 	
 	for(int i = 0; i < rom_exts_to_try.size; i++){
-		__CPROVER_assume(MAX_IMAGE_LENGTH > rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
+		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
 		rom_exts_to_try.rom_exts_mfs[i].image_code = malloc(sizeof(char) * rom_exts_to_try.rom_exts_mfs[i].image_length);
 	}
 

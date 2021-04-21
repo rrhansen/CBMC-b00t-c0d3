@@ -1,3 +1,5 @@
+#include "mask_rom.h"
+
 int cmp_key(const void* buf1, const void* buf2, unsigned int size) {
 	
 	__CPROVER_assert(size == 3072 + 32,
@@ -24,7 +26,7 @@ int cmp_key(const void* buf1, const void* buf2, unsigned int size) {
 
 int cmp_image_len(const void* buf1, const void* buf2, unsigned int size) {
 
-	__CPROVER_assert(size == 32,
+	__CPROVER_assert(size == 4,
 	"Assert: Size should be equal to size of image_len variable type");
 
 	const char* cbuf1 = (char*)buf1;
@@ -47,8 +49,8 @@ int cmp_image_len(const void* buf1, const void* buf2, unsigned int size) {
 
 int cmp_image_code(const void* buf1, const void* buf2, unsigned int size) {
 
-	__CPROVER_assert(size == 2,
-	"Assert: Size should be equal to MAX_IMAGE_LENGTH");
+	__CPROVER_assert(size <= MAX_IMAGE_LENGTH && size > 0,
+	"Assert: Size should be less than or equal to MAX_IMAGE_LENGTH");
 	const char* cbuf1 = (char*)buf1;
 	const char* cbuf2 = (char*)buf2;
 
