@@ -12,8 +12,10 @@ doc/security/specs/secure_boot/index.md
 #include "memory_compare.h"
 
 //Whitelist in ROM
-#define __PKEY_WHITELIST_SIZE 1
-static pub_key_t __pkey_whitelist[__PKEY_WHITELIST_SIZE];
+#define __PKEY_WHITELIST_SIZE MAX_ROM_EXTS
+static pub_key_t __pkey_whitelist[MAX_ROM_EXTS];
+static pub_key_t __tampered_pkey_whitelist[MAX_ROM_EXTS]; //To model tampered whitelist
+
 
 //for CBMC
 int __current_rom_ext = 0;
@@ -199,7 +201,7 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
 
 //Mocked function for reading pkey whitelist from maskrom.
 pub_key_t* ROM_CTRL_get_whitelist() {
-	return __pkey_whitelist;
+	return __tampered_pkey_whitelist; 
 }
 
 
@@ -336,7 +338,7 @@ int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postconditio
 	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != 3072)
 		return 0;
 
-	pub_key_t* pkey_whitelist = ROM_CTRL_get_whitelist();
+	pub_key_t* pkey_whitelist = __pkey_whitelist; //Note it uses the original whitelist (untampered)
 
 	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
 		if (pkey_whitelist[i].exponent != pkey.exponent)
@@ -404,6 +406,10 @@ void PROOF_HARNESS() {
 
 	__CPROVER_assume(boot_policy.fail == &__func_fail);
 	__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
+
+	for(int i = 0; i < MAX_ROM_EXTS; i++){
+	__tampered_pkey_whitelist[i] = rom_exts_to_try.rom_exts_mfs[i].pub_signature_key; //WHITELIST TAMPERING ATTACK
+	}
 
 	for(int i = 0; i < rom_exts_to_try.size; i++){
 		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
