@@ -391,11 +391,6 @@ int __help_all_pmp_inactive(){
 	return 1;
 }
 
-
-void dangerFunction() {
-	__REACHABILITY_CHECK
-}
-
 void __func_fail() { __boot_failed_called[__current_rom_ext] = 1; } //used for CBMC
 void __func_fail_rom_ext(rom_ext_manifest_t _) { __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
 
@@ -405,18 +400,9 @@ void PROOF_HARNESS() {
 
 	__CPROVER_assume(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0);
 
-	int __non_det;
-	switch(__non_det){
-		case 1: //points to some random part of memory - This breaks the security
-			//Should we still assume that the function pointers are valid???
-			break;
-		default: //points to valid functions
-			__CPROVER_assume(boot_policy.fail == &__func_fail);
-			__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
-			break;
-	}
+	__CPROVER_assume(boot_policy.fail == &__func_fail);
+	__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
 
-	
 	for(int i = 0; i < rom_exts_to_try.size; i++){
 		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
 		rom_exts_to_try.rom_exts_mfs[i].image_code = malloc(sizeof(char) * rom_exts_to_try.rom_exts_mfs[i].image_length);
@@ -624,21 +610,4 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
 	//Step 2.iv
 	boot_failed(boot_policy);
-}
-
-void addressof() {
-	/*&dangerFunction; 
-	&mask_rom_boot;
-	&final_jump_to_rom_ext; 
-	&boot_failed; 
-	&boot_failed_rom_ext_terminated; 
-	&pmp_unlock_rom_ext; 
-	&enable_memory_protection; 
-	&sign_is_non_zero;
-	&check_pub_key_valid;
-	&verify_rom_ext_signature;
-	&read_boot_policy;
-	&rom_ext_manifests_to_try;
-	&read_pub_key;
-	&WRITE_PMP_REGION;*/
 }
