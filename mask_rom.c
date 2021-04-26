@@ -182,7 +182,7 @@ int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* mess
 	}
 	else{
 		__valid_signature[__current_rom_ext] = 0;
-		return 0;
+		return 1; //ALWAYS validates - to model that the OTBN is spoofed
 	}
 }
 
