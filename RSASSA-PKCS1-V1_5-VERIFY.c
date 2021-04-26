@@ -40,12 +40,12 @@ int __is_valid_params(int32_t exponent, int32_t* modulus, char* message, int mes
 }
 
 
-char* RSA_3072_DECRYPT(int32_t* signature, int signature_len, int32_t exponent, int32_t* modulus){
+char* OTBN_RSA_3072_DECRYPT(int32_t* signature, int signature_len, int32_t exponent, int32_t* modulus){
 	char* decrypt = malloc(256/8); //model it to be ok for PROPERTY 5
 	return decrypt;
 }
 
-int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len, rom_ext_manifest_t __current_rom_ext_mf){
+int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len, rom_ext_manifest_t __current_rom_ext_mf){
 	__CPROVER_assert(__CPROVER_OBJECT_SIZE(message) == message_len,
 	"PROPERTY 5: Formal parameter message_len lenght matches actual message length.");
 
@@ -76,8 +76,8 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 	}
 	__REACHABILITY_CHECK
 
-	char* decrypt = RSA_3072_DECRYPT(signature, signature_len, exponent, modulus);
-	char* hash = SHA2_256(message, message_len, __current_rom_ext_mf); //message_len in bytes
+	char* decrypt = OTBN_RSA_3072_DECRYPT(signature, signature_len, exponent, modulus);
+	char* hash = HMAC_SHA2_256(message, message_len, __current_rom_ext_mf); //message_len in bytes
 
 	__CPROVER_assert(!__CPROVER_array_equal(decrypt, signature), 
 	"PROPERTY 5: Decrypted signature is different from signature");

@@ -2,7 +2,7 @@
 #include "memory_compare.h"
 
 
-BYTE* SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf) {
+BYTE* HMAC_SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf) {
 	
 	int __expected_size =
 		sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length) + __current_rom_ext_mf.image_length;

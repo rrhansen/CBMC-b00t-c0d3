@@ -75,7 +75,7 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
 	//Otherwise OBJECT_SIZE returns size of manifest and not signature.
 	signature_t signature = manifest.signature;
 
-	int result = RSASSA_PKCS1_V1_5_VERIFY(rom_ext_pub_key.exponent, rom_ext_pub_key.modulus, message, bytes, signature.value, RSA_SIZE, manifest);
+	int result = OTBN_RSASSA_PKCS1_V1_5_VERIFY(rom_ext_pub_key.exponent, rom_ext_pub_key.modulus, message, bytes, signature.value, RSA_SIZE, manifest);
 
 	return result; //0 or 1
 }
@@ -119,12 +119,12 @@ int __is_valid_params(int32_t exponent, int32_t* modulus, char* message, int mes
 }
 
 
-char* RSA_3072_DECRYPT(int32_t* signature, int signature_len, int32_t exponent, int32_t* modulus) {
+char* OTBN_RSA_3072_DECRYPT(int32_t* signature, int signature_len, int32_t exponent, int32_t* modulus) {
 	char* decrypt = malloc(256 / 8); //model it to be ok for PROPERTY 5
 	return decrypt;
 }
 
-int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len, rom_ext_manifest_t __current_rom_ext_mf) {
+int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len, rom_ext_manifest_t __current_rom_ext_mf) {
 	__CPROVER_assert(__CPROVER_OBJECT_SIZE(message) == message_len,
 		"PROPERTY 5: Formal parameter message_len lenght matches actual message length.");
 
@@ -155,8 +155,8 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 		}
 	__REACHABILITY_CHECK
 
-	char* decrypt = RSA_3072_DECRYPT(signature, signature_len, exponent, modulus);
-	char* hash = SHA2_256(message, message_len, __current_rom_ext_mf); //message_len in bytes
+	char* decrypt = OTBN_RSA_3072_DECRYPT(signature, signature_len, exponent, modulus);
+	char* hash = HMAC_SHA2_256(message, message_len, __current_rom_ext_mf); //message_len in bytes
 
 	__CPROVER_assert(!__CPROVER_array_equal(decrypt, signature),
 		"PROPERTY 5: Decrypted signature is different from signature");
@@ -187,10 +187,10 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 }
 
 
-boot_policy_t read_boot_policy() {}
+boot_policy_t FLASH_CTRL_read_boot_policy() {}
 
 
-rom_exts_manifests_t rom_ext_manifests_to_try(boot_policy_t boot_policy) {}
+rom_exts_manifests_t FLASH_CTRL_rom_ext_manifests_to_try(boot_policy_t boot_policy) {}
 
 
 pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
@@ -198,13 +198,13 @@ pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
 }
 
 //Mocked function for reading pkey whitelist from maskrom.
-pub_key_t* get_whitelist() {
+pub_key_t* ROM_CTRL_get_whitelist() {
 	return __pkey_whitelist;
 }
 
 
 extern int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
-	pub_key_t* pkey_whitelist = get_whitelist();
+	pub_key_t* pkey_whitelist = ROM_CTRL_get_whitelist();
 
 	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
 		if (pkey_whitelist[i].exponent != rom_ext_pub_key.exponent)
@@ -225,21 +225,21 @@ extern int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior be
 }
 
 
-extern void WRITE_PMP_REGION(uint8_t reg, uint8_t r, uint8_t w, uint8_t e, uint8_t l);
+extern void PMP_WRITE_REGION(uint8_t reg, uint8_t r, uint8_t w, uint8_t e, uint8_t l);
 
 
-void pmp_unlock_rom_ext() {
+void PMP_unlock_rom_ext() {
 	//Read, Execute, Locked the address space of the ROM extension image
-	WRITE_PMP_REGION(        0,        1,        0,        1,        1);
+	PMP_WRITE_REGION(        0,        1,        0,        1,        1);
 	//                  Region      Read     Write	  Execute	  Locked 
 	__register_pmp_region(__current_rom_ext, 0, 1, 0, 1, 1);
 	__REACHABILITY_CHECK
 }
 
 
-void enable_memory_protection() {
+void PMP_enable_memory_protection() {
 	//Apply PMP region 15 to cover entire flash
-	WRITE_PMP_REGION(       15,        1,        0,        0,        1);
+	PMP_WRITE_REGION(       15,        1,        0,        0,        1);
 	//                  Region      Read     Write   Execute    Locked 
 
 	__register_pmp_region(-1, 15, 1, 0, 0, 1);
@@ -336,7 +336,7 @@ int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postconditio
 	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != 3072)
 		return 0;
 
-	pub_key_t* pkey_whitelist = get_whitelist();
+	pub_key_t* pkey_whitelist = ROM_CTRL_get_whitelist();
 
 	for (int i = 0; i < __PKEY_WHITELIST_SIZE; i++) {
 		if (pkey_whitelist[i].exponent != pkey.exponent)
@@ -397,8 +397,8 @@ void __func_fail() { __boot_failed_called[__current_rom_ext] = 1; } //used for C
 void __func_fail_rom_ext(rom_ext_manifest_t _) { __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
 
 void PROOF_HARNESS() {
-	boot_policy_t boot_policy = read_boot_policy();
-	rom_exts_manifests_t rom_exts_to_try = rom_ext_manifests_to_try(boot_policy);
+	boot_policy_t boot_policy = FLASH_CTRL_read_boot_policy();
+	rom_exts_manifests_t rom_exts_to_try = FLASH_CTRL_rom_ext_manifests_to_try(boot_policy);
 
 	__CPROVER_assume(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0);
 
@@ -532,7 +532,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 	__CPROVER_precondition(__help_all_pmp_inactive(),
 	"Precondition PROPERTY 9: All PMP regions should be unset at beginning of mask_rom.");
 
-	enable_memory_protection();
+	PMP_enable_memory_protection();
 
 	//Måske step 2.iii
 	for (int i = 0; i < rom_exts_to_try.size; i++) {
@@ -592,7 +592,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 		__validated_rom_exts[i] = 1; //for CBMC
 
 		//Step 2.iii.d
-		pmp_unlock_rom_ext();
+		PMP_unlock_rom_ext();
 				
 		__CPROVER_assert(__help_check_pmp_region(i, 0, 1, 0, 1, 1),
 		"PROPERTY 10: PMP region 0 should be R, E, and L.");

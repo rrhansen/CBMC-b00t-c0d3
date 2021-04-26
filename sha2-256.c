@@ -41,7 +41,7 @@ static const WORD k[64] = {
 };
 
 /*********************** FUNCTION DEFINITIONS ***********************/
-void SHA2_256_transform(SHA2_256_CTX *ctx, const BYTE data[])
+void HMAC_SHA2_256_transform(SHA2_256_CTX *ctx, const BYTE data[])
 {
 	WORD a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 
@@ -82,7 +82,7 @@ void SHA2_256_transform(SHA2_256_CTX *ctx, const BYTE data[])
 	ctx->state[7] += h;
 }
 
-void SHA2_256_init(SHA2_256_CTX *ctx)
+void HMAC_SHA2_256_init(SHA2_256_CTX *ctx)
 {
 	ctx->datalen = 0;
 	ctx->bitlen = 0;
@@ -96,7 +96,7 @@ void SHA2_256_init(SHA2_256_CTX *ctx)
 	ctx->state[7] = 0x5be0cd19;
 }
 
-void SHA2_256_update(SHA2_256_CTX *ctx, const BYTE data[], size_t len)
+void HMAC_SHA2_256_update(SHA2_256_CTX *ctx, const BYTE data[], size_t len)
 {
 	WORD i;
 
@@ -104,14 +104,14 @@ void SHA2_256_update(SHA2_256_CTX *ctx, const BYTE data[], size_t len)
 		ctx->data[ctx->datalen] = data[i];
 		ctx->datalen++;
 		if (ctx->datalen == 64) {
-			SHA2_256_transform(ctx, ctx->data);
+			HMAC_SHA2_256_transform(ctx, ctx->data);
 			ctx->bitlen += 512;
 			ctx->datalen = 0;
 		}
 	}
 }
 
-void SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[])
+void HMAC_SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[])
 {
 	WORD i;
 
@@ -127,7 +127,7 @@ void SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[])
 		ctx->data[i++] = 0x80;
 		while (i < 64)
 			ctx->data[i++] = 0x00;
-		SHA2_256_transform(ctx, ctx->data);
+		HMAC_SHA2_256_transform(ctx, ctx->data);
 		memset(ctx->data, 0, 56);
 	}
 
@@ -141,7 +141,7 @@ void SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[])
 	ctx->data[58] = ctx->bitlen >> 40;
 	ctx->data[57] = ctx->bitlen >> 48;
 	ctx->data[56] = ctx->bitlen >> 56;
-	SHA2_256_transform(ctx, ctx->data);
+	HMAC_SHA2_256_transform(ctx, ctx->data);
 
 	// Since this implementation uses little endian byte ordering and SHA uses big endian,
 	// reverse all the bytes when copying the final state to the output hash.
@@ -157,7 +157,7 @@ void SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[])
 	}
 }
 
-BYTE* SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf){
+BYTE* HMAC_SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf){
 	int __expected_size = 
 	sizeof(__current_rom_ext_mf.pub_signature_key)+sizeof(__current_rom_ext_mf.image_length)+__current_rom_ext_mf.image_length;
 
@@ -189,9 +189,9 @@ BYTE* SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf){
 	BYTE* buff = malloc(SHA2_256_BLOCK_SIZE * sizeof(BYTE));
 	SHA2_256_CTX ctx;
 
-	SHA2_256_init(&ctx);
-	SHA2_256_update(&ctx, mes, size);
-	SHA2_256_final(&ctx, buff);
+	HMAC_SHA2_256_init(&ctx);
+	HMAC_SHA2_256_update(&ctx, mes, size);
+	HMAC_SHA2_256_final(&ctx, buff);
 
 
 	__CPROVER_assert(__CPROVER_OBJECT_SIZE(buff)==256/8, 
