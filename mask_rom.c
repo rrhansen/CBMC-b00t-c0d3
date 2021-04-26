@@ -77,8 +77,6 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
 
 	int result = RSASSA_PKCS1_V1_5_VERIFY(rom_ext_pub_key.exponent, rom_ext_pub_key.modulus, message, bytes, signature.value, RSA_SIZE, manifest);
 
-	__valid_signature[__current_rom_ext] = result;
-
 	return result; //0 or 1
 }
 
@@ -178,10 +176,14 @@ int RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, 
 	__CPROVER_assert(__CPROVER_r_ok(hash, 256 / 8),
 		"PROPERTY 3: hash is in readable address");
 
-	if (cmp_hash_decrypt(hash, decrypt, 256 / 8) == 0)
+	if (cmp_hash_decrypt(hash, decrypt, 256 / 8) == 0){
+		__valid_signature[__current_rom_ext] = 1;
 		return 1; //verified
-	else
+	}
+	else{
+		__valid_signature[__current_rom_ext] = 0;
 		return 0;
+	}
 }
 
 
