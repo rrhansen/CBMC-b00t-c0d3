@@ -225,7 +225,9 @@ extern int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior be
 }
 
 
-extern void PMP_WRITE_REGION(uint8_t reg, uint8_t r, uint8_t w, uint8_t e, uint8_t l);
+extern void PMP_WRITE_REGION(uint8_t reg, uint8_t r, uint8_t w, uint8_t e, uint8_t l){
+	__REACHABILITY_CHECK
+}
 
 
 void PMP_unlock_rom_ext() {
