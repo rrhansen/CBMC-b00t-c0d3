@@ -118,11 +118,18 @@ int __is_valid_params(int32_t exponent, int32_t* modulus, char* message, int mes
 	return 1;
 }
 
+char* __compromised_decrypt;
 
 char* OTBN_RSA_3072_DECRYPT(int32_t* signature, int signature_len, int32_t exponent, int32_t* modulus) {
 	char* decrypt = malloc(256 / 8); //model it to be ok for PROPERTY 5
+	__compromised_decrypt = decrypt;
 	return decrypt;
 }
+
+BYTE* HMAC_SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf) {
+	return __compromised_decrypt; //Attacker spoofs the hash, knowing the public key (and thus target decrypt)
+}
+
 
 int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len, rom_ext_manifest_t __current_rom_ext_mf) {
 	__CPROVER_assert(__CPROVER_OBJECT_SIZE(message) == message_len,
@@ -495,11 +502,11 @@ PROPERTY 1, 2, 6, 7, 8, 9, 10
 
 RSA_SIZE = 96
 Run:
-cbmc mask_rom.c mock_sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
 
 RSA_SIZE = 5
 Run: 
-cbmc mask_rom.c mock_sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 33 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c memory_compare.c --function PROOF_HARNESS --unwind 33 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
 
 
 PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
