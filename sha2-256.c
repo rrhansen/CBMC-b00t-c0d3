@@ -1,6 +1,8 @@
 /*********************************************************************
+//////////////////////// ORIGINAL FILE ///////////////////////////////
 * Filename:   sha2_256.c
-* Author:     Brad Conte (brad AT bradconte.com)
+* Original
+  Author:     Brad Conte (brad AT bradconte.com)
 * Copyright:
 * Disclaimer: This code is presented "as is" without any guarantees.
 * Details:    Implementation of the SHA-256 hashing algorithm.
@@ -10,6 +12,8 @@
               Algorithm specification can be found here:
                * http://csrc.nist.gov/publications/fips/fips180-2/fips180-2withchangenotice.pdf
               This implementation uses little endian byte order.
+							
+* Modified By: Jacob Gosch and Kristoffer Jensen
 *********************************************************************/
 
 /*************************** HEADER FILES ***************************/
@@ -157,7 +161,7 @@ void HMAC_SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[])
 	}
 }
 
-BYTE* HMAC_SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf){
+BYTE* HMAC_SHA2_256(BYTE key[], BYTE mes[], int mes_size, rom_ext_manifest_t __current_rom_ext_mf){
 	int __expected_size = 
 	sizeof(__current_rom_ext_mf.pub_signature_key)+sizeof(__current_rom_ext_mf.image_length)+__current_rom_ext_mf.image_length;
 
@@ -179,7 +183,7 @@ BYTE* HMAC_SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_m
 		__current_rom_ext_mf.image_length) == 0,
 		"PROPERTY 4: Message contains the Image code");
 
-	__CPROVER_assert(size == __expected_size,
+	__CPROVER_assert(mes_size == __expected_size,
 	"PROPERTY 4: Message size parameter is as expected.");
  
 	__CPROVER_assert(__CPROVER_OBJECT_SIZE(mes) == __expected_size,
@@ -189,8 +193,20 @@ BYTE* HMAC_SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_m
 	BYTE* buff = malloc(SHA2_256_BLOCK_SIZE * sizeof(BYTE));
 	SHA2_256_CTX ctx;
 
+	BYTE* key_mes_pad = malloc(HMAC_KEY_SIZE * sizeof(BYTE) + mes_size * sizeof(BYTE)); //key ∥ mes
+	memcpy(
+		key_mes_pad,
+		key,
+		HMAC_KEY_SIZE
+	);
+	memcpy(
+		key_mes_pad + HMAC_KEY_SIZE,
+		mes,
+		mes_size
+	);
+
 	HMAC_SHA2_256_init(&ctx);
-	HMAC_SHA2_256_update(&ctx, mes, size);
+	HMAC_SHA2_256_update(&ctx, key_mes_pad, HMAC_KEY_SIZE + mes_size);
 	HMAC_SHA2_256_final(&ctx, buff);
 
 

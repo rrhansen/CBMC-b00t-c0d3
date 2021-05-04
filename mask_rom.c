@@ -11,9 +11,12 @@ doc/security/specs/secure_boot/index.md
 #include "mask_rom.h"
 #include "memory_compare.h"
 
+//HMAC key in OTP/Keymanager
+BYTE __hmac_key[HMAC_KEY_SIZE];
+
 //Whitelist in ROM
 #define __PKEY_WHITELIST_SIZE 1
-static pub_key_t __pkey_whitelist[__PKEY_WHITELIST_SIZE];
+pub_key_t __pkey_whitelist[__PKEY_WHITELIST_SIZE];
 
 //for CBMC
 int __current_rom_ext = 0;
@@ -146,17 +149,17 @@ int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* mess
 
 	__REACHABILITY_CHECK
 
-		if (signature_len != RSA_SIZE) {
-			__CPROVER_assert(signature_len * 32 != 3072,
-				"PROPERTY 5: Length checking: If the length of the signature is not 3072 bytes, stop.");
-			__REACHABILITY_CHECK // Not reachable atm
+	if (signature_len != RSA_SIZE) {
+		__CPROVER_assert(signature_len * 32 != 3072,
+			"PROPERTY 5: Length checking: If the length of the signature is not 3072 bytes, stop.");
+		__REACHABILITY_CHECK // Not reachable atm
 
-				return 0;
-		}
+			return 0;
+	}
 	__REACHABILITY_CHECK
 
 	char* decrypt = OTBN_RSA_3072_DECRYPT(signature, signature_len, exponent, modulus);
-	char* hash = HMAC_SHA2_256(message, message_len, __current_rom_ext_mf); //message_len in bytes
+	char* hash = HMAC_SHA2_256(__hmac_key, message, message_len, __current_rom_ext_mf); //message_len in bytes
 
 	__CPROVER_assert(!__CPROVER_array_equal(decrypt, signature),
 		"PROPERTY 5: Decrypted signature is different from signature");

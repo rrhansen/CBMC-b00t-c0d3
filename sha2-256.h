@@ -15,7 +15,7 @@
 
 /****************************** MACROS ******************************/
 #define SHA2_256_BLOCK_SIZE 32            // SHA256 outputs a 32 byte digest
-
+#define HMAC_KEY_SIZE 20                  // HMAC key is 20 bytes
 /**************************** DATA TYPES ****************************/
 typedef unsigned char BYTE;             // 8-bit byte
 typedef unsigned int WORD;              // 32-bit word, change to "long" for 16-bit machines
@@ -31,6 +31,6 @@ typedef struct {
 void HMAC_SHA2_256_init(SHA2_256_CTX *ctx);
 void HMAC_SHA2_256_update(SHA2_256_CTX *ctx, const BYTE data[], size_t len);
 void HMAC_SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[]);
-BYTE* HMAC_SHA2_256(BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf);
+BYTE* HMAC_SHA2_256(BYTE key[], BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf);
 
 #endif	// SHA256_H
