@@ -7,7 +7,7 @@ sw/device/mask_rom/docs/index.md
 doc/security/specs/secure_boot/index.md
 
 */
-#include "sha2-256.h"
+#include "hmac.h"
 #include "mask_rom.h"
 #include "memory_compare.h"
 
@@ -500,21 +500,21 @@ PROPERTY 1, 2, 6, 7, 8, 9, 10
 
 RSA_SIZE = 96
 Run:
-cbmc mask_rom.c mock_sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c mock_hmac.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
 
 RSA_SIZE = 5
 Run: 
-cbmc mask_rom.c mock_sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 33 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c mock_hmac.c memory_compare.c --function PROOF_HARNESS --unwind 33 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
 
 
 PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 RSA_SIZE = 96
 Run: (OUTDATED)
-cbmc mask_rom.c sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c hmac.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset memcmp.0:400 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
 
 RSA_SIZE = 5
 Run: (OUTDATED)
-cbmc mask_rom.c sha2-256.c memory_compare.c --function PROOF_HARNESS --unwind 20 --unwindset memcmp.0:40 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c hmac.c memory_compare.c --function PROOF_HARNESS --unwind 20 --unwindset memcmp.0:40 --unwindset mask_rom_boot.0:6 --unwindset PROOF_HARNESS.0:6  --unwindset memcmp.0:25 --unwindset sha256_update.0:40 --unwindset sha256_final.0:56 --unwindset sha256_final.1:64 --unwindset sha256_transform.0:17 --unwindset sha256_transform.1:64 --unwindset sha256_transform.2:65 --unwinding-assertions --pointer-check --bounds-check
 
 
 Result should be: 18 out of 778 failed.
