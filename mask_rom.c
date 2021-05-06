@@ -398,6 +398,11 @@ int __help_all_pmp_inactive(){
 void __func_fail() { __boot_failed_called[__current_rom_ext] = 1; } //used for CBMC
 void __func_fail_rom_ext(rom_ext_manifest_t _) { __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
 
+
+void dangerFunction(){
+	__REACHABILITY_CHECK
+}
+
 void PROOF_HARNESS() {
 	boot_policy_t boot_policy = FLASH_CTRL_read_boot_policy();
 	rom_exts_manifests_t rom_exts_to_try = FLASH_CTRL_rom_ext_manifests_to_try(boot_policy);
@@ -406,6 +411,10 @@ void PROOF_HARNESS() {
 
 	__CPROVER_assume(boot_policy.fail == &__func_fail);
 	__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
+
+	boot_policy.fail = &dangerFunction;
+
+	//TODO: Make whitelist contain  a key that is not one of those in rom ext manifests.
 
 	for(int i = 0; i < rom_exts_to_try.size; i++){
 		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
