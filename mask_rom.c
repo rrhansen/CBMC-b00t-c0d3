@@ -323,12 +323,15 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 }
 
 
-int __help_sign_ok_format(signature_t sign) { //used for CBMC assertion + postcondition
-	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != 3072) //Signature must be 3072 bits
+int __help_check_rom_ext_manifest(rom_ext_manifest_t manifest) { //used for CBMC assertion + postcondition
+	if (manifest.identifier == 0)
+		return 0;
+	
+	if (__CPROVER_OBJECT_SIZE(manifest.signature.value) * 8 != 3072) //Signature must be 3072 bits
 		return 0;
 
 	for (int i = 0; i < RSA_SIZE; i++) {
-		if (sign.value[i] != 0)
+		if (manifest.signature.value[i] != 0)
 			return 1;
 	}
 	return 0;
@@ -425,22 +428,27 @@ void PROOF_HARNESS() {
 
 	for (int i = 0; i < rom_exts_to_try.size; i++) {
 
-		__CPROVER_postcondition(__imply(!__help_sign_ok_format(rom_exts_to_try.rom_exts_mfs[i].signature) ||
+		__CPROVER_postcondition(__imply(!__help_check_rom_ext_manifest(rom_exts_to_try.rom_exts_mfs[i]) ||
 								!__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
 								!__verify_signature_called[i]),
-		"Postcondition PROPERTY 5: If sign or key is invalid then verify signature function is not called");
+		"Postcondition PROPERTY 5: If identifier, sign, or key is invalid then verify signature function is not called");
+
+		__CPROVER_postcondition(__imply(__help_check_rom_ext_manifest(rom_exts_to_try.rom_exts_mfs[i]) &&
+								__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
+								__verify_signature_called[i]),
+		"Postcondition PROPERTY 5: If identifier, sign, and key are valid then the signature verification function is called");
 
 		if (__validated_rom_exts[i]) { //validated - try to boot from
 			__REACHABILITY_CHECK
 
-			__CPROVER_postcondition(__help_sign_ok_format(rom_exts_to_try.rom_exts_mfs[i].signature),
+			__CPROVER_postcondition(__help_check_rom_ext_manifest(rom_exts_to_try.rom_exts_mfs[i]),
 			"Postcondition PROPERTY 1: rom_ext VALIDATED => valid signature");
 
 			__CPROVER_postcondition(__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key),
 			"Postcondition PROPERTY 2: rom_ext VALIDATED => valid key");
 
 			__CPROVER_postcondition(__verify_signature_called[i],
-			"Postcondition PROPERTY 5: iff sign and key is valid then verify signature function is called");
+			"Postcondition PROPERTY 5: iff manifest is valid then verify signature function is called");
 
 			__CPROVER_postcondition(__valid_signature[i],
 			"Postcondition PROPERTY 5: rom_ext VALIDATED => signature valid");
@@ -464,10 +472,10 @@ void PROOF_HARNESS() {
 		else { //invalidated - unsafe to boot from
 			__REACHABILITY_CHECK
 
-			__CPROVER_postcondition(!__help_sign_ok_format(rom_exts_to_try.rom_exts_mfs[i].signature) ||
+			__CPROVER_postcondition(!__help_check_rom_ext_manifest(rom_exts_to_try.rom_exts_mfs[i]) ||
 									!__help_pkey_valid(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key) ||
 									!__valid_signature[i],
-			"Postcondition: rom_ext INVALIDATED => signature or key is invalid");
+			"Postcondition: rom_ext INVALIDATED => identifier, signature, or key is invalid");
 
 			__CPROVER_postcondition(!__valid_signature[i],
 			"Postcondition PROPERTY 5: rom_ext INVALIDATED => signature invalid or not checked");
@@ -556,16 +564,16 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 		if (!check_rom_ext_manifest(current_rom_ext_manifest)) {
 			__REACHABILITY_CHECK
 
-			__CPROVER_assert(!__help_sign_ok_format(current_rom_ext_manifest.signature),
-			"PROPERTY 1: Stop verification if signature is invalid");
+			__CPROVER_assert(!__help_check_rom_ext_manifest(current_rom_ext_manifest),
+			"PROPERTY 1: Stop verification if signature or identifier is invalid");
 
 			continue;
 		}
 
 		__REACHABILITY_CHECK
 
-		__CPROVER_assert(__help_sign_ok_format(current_rom_ext_manifest.signature),
-		"PROPERTY 1: Continue verification if signature is valid");
+		__CPROVER_assert(__help_check_rom_ext_manifest(current_rom_ext_manifest),
+		"PROPERTY 1: Continue verification if signature and identifier are valid");
 
 		//Step 2.iii.b
 		pub_key_t rom_ext_pub_key = read_pub_key(current_rom_ext_manifest);	
