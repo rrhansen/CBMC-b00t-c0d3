@@ -312,7 +312,9 @@ void boot_failed_rom_ext_terminated(boot_policy_t boot_policy, rom_ext_manifest_
 }
 
 
-int sign_is_non_zero(rom_ext_manifest_t manifest) {
+int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
+	if (manifest.identifier == 0)
+		return 0;
 	for (int i = 0; i < RSA_SIZE; i++) {
 		if (manifest.signature.value[i] != 0)
 			return 1; // If the signature[i] != 0 for one i, the manifest is valid.
@@ -551,7 +553,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 		signature_t __signature = current_rom_ext_manifest.signature; //needed for __CPROVER_OBJECT_SIZE
 
 
-		if (!sign_is_non_zero(current_rom_ext_manifest)) {
+		if (!check_rom_ext_manifest(current_rom_ext_manifest)) {
 			__REACHABILITY_CHECK
 
 			__CPROVER_assert(!__help_sign_ok_format(current_rom_ext_manifest.signature),
