@@ -409,12 +409,16 @@ void PROOF_HARNESS() {
 
 	__CPROVER_assume(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0);
 
-	__CPROVER_assume(boot_policy.fail == &__func_fail);
 	__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
 
-	boot_policy.fail = &dangerFunction;
-
-	//TODO: Make whitelist contain  a key that is not one of those in rom ext manifests.
+	//Boot policy has been tampered.
+	__CPROVER_assume(boot_policy.fail == &dangerFunction);
+	
+	//Assume that the key in whitelist is different form keys in manifests.
+	for (int i = 0; i < rom_exts_to_try.size; i++) {
+		__CPROVER_assume(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key != __pkey_whitelist[0]);
+	}
+	
 
 	for(int i = 0; i < rom_exts_to_try.size; i++){
 		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
