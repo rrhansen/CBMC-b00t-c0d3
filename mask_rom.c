@@ -327,7 +327,9 @@ int __help_check_rom_ext_manifest(rom_ext_manifest_t manifest) { //used for CBMC
 	if (manifest.identifier == 0)
 		return 0;
 	
-	if (__CPROVER_OBJECT_SIZE(manifest.signature.value) * 8 != 3072) //Signature must be 3072 bits
+	signature_t signature = manifest.signature; //needed to take object size of signature and not entire manifest
+
+	if (__CPROVER_OBJECT_SIZE(signature.value) != 3072 / 8) //Signature must be 3072 bits
 		return 0;
 
 	for (int i = 0; i < RSA_SIZE; i++) {
