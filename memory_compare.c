@@ -2,7 +2,7 @@
 
 int cmp_key(const void* buf1, const void* buf2, unsigned int size) {
 	
-	__CPROVER_assert(size == 3072 + 32,
+	__CPROVER_assert(size == (3072 + 32)/8,
 	"Assert: Size should be equal to size of modulus and exponent");
 
 	const char* cbuf1 = (char*)buf1;
@@ -72,7 +72,7 @@ int cmp_image_code(const void* buf1, const void* buf2, unsigned int size) {
 
 int cmp_modulus(const void* buf1, const void* buf2, unsigned int size) {
 
-	__CPROVER_assert(size == 3072,
+	__CPROVER_assert(size == 3072/8,
 	"Assert: Size should be equal to size of modulus");
 
 	const char* cbuf1 = (char*)buf1;
@@ -96,7 +96,7 @@ int cmp_modulus(const void* buf1, const void* buf2, unsigned int size) {
 
 int cmp_signature(const void* buf1, const void* buf2, unsigned int size) {
 
-	__CPROVER_assert(size == 3072,
+	__CPROVER_assert(size == 3072/8,
 	"Assert: Size should be equal to size of signature");
 
 	const char* cbuf1 = (char*)buf1;
@@ -120,7 +120,7 @@ int cmp_signature(const void* buf1, const void* buf2, unsigned int size) {
 
 int cmp_hash_decrypt(const void* buf1, const void* buf2, unsigned int size) {
 
-	__CPROVER_assert(size == 256,
+	__CPROVER_assert(size == 256/8,
 	"Assert: Size should be equal to size of hash");
 
 	const char* cbuf1 = (char*)buf1;
