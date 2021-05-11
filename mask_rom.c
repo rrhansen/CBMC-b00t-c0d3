@@ -414,12 +414,6 @@ void PROOF_HARNESS() {
 	//Boot policy has been tampered.
 	__CPROVER_assume(boot_policy.fail == &dangerFunction);
 	
-	//Assume that the key in whitelist is different from keys in manifests.
-	for (int i = 0; i < rom_exts_to_try.size; i++) {
-		__CPROVER_assume(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key != __pkey_whitelist[0]);
-	}
-	
-
 	for(int i = 0; i < rom_exts_to_try.size; i++){
 		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
 		rom_exts_to_try.rom_exts_mfs[i].image_code = malloc(sizeof(char) * rom_exts_to_try.rom_exts_mfs[i].image_length);
