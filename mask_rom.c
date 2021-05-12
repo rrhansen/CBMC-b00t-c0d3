@@ -399,7 +399,11 @@ void __func_fail() { __boot_failed_called[__current_rom_ext] = 1; } //used for C
 void __func_fail_rom_ext(rom_ext_manifest_t _) { __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
 
 
-void dangerFunction(){
+void dangerFunctionALL(){
+	__REACHABILITY_CHECK
+}
+
+void dangerFunctionRETURN(rom_ext_manifest_t _) {
 	__REACHABILITY_CHECK
 }
 
@@ -409,14 +413,16 @@ void PROOF_HARNESS() {
 
 	__CPROVER_assume(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0);
 
-	__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
 
 	//Boot policy has been tampered.
-	__CPROVER_assume(boot_policy.fail == &dangerFunction);
+	__CPROVER_assume(boot_policy.fail == &dangerFunctionALL);
+	__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &dangerFunctionRETURN);
 	
 	//Assume that the key in whitelist is different from keys in manifests.
-	for (int i = 0; i < rom_exts_to_try.size; i++) {
-		__CPROVER_assume(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key != __pkey_whitelist[0]);
+	for (int i = 0; i < MAX_ROM_EXTS; i++) {
+		for (int j = 0; j < __PKEY_WHITELIST_SIZE; j++) {
+			__CPROVER_assume(rom_exts_to_try.rom_exts_mfs[i].pub_signature_key != __pkey_whitelist[j]);
+		}
 	}
 	
 
