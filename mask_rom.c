@@ -400,7 +400,7 @@ void dangerFunctionALL() {
 	__REACHABILITY_CHECK
 }
 
-void dangerFunction1(rom_ext_manifest_t _) {
+void dangerFunctionRETURN(rom_ext_manifest_t _) {
 	__REACHABILITY_CHECK
 }
 
@@ -410,8 +410,8 @@ void PROOF_HARNESS() {
 
 	__CPROVER_assume(rom_exts_to_try.size <= MAX_ROM_EXTS && rom_exts_to_try.size > 0);
 
-	__CPROVER_assume(boot_policy.fail == &dangerFunction);
-	__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &dangerFunction1);
+	__CPROVER_assume(boot_policy.fail == &dangerFunctionALL);
+	__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &dangerFunctionRETURN);
 
 	for(int i = 0; i < rom_exts_to_try.size; i++){
 		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
