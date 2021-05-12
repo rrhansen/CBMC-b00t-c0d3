@@ -130,7 +130,7 @@ int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* mess
 	__CPROVER_assert(__CPROVER_OBJECT_SIZE(message) == message_len,
 		"PROPERTY 5: Formal parameter message_len lenght matches actual message length.");
 
-	__CPROVER_assert(__CPROVER_OBJECT_SIZE(signature) * 8 == 3072,
+	__CPROVER_assert(__CPROVER_OBJECT_SIZE(signature) * 8 == RSA_SIZE*32,
 		"PROPERTY 5: Signature to be verified is 3072-bits.");
 
 	__CPROVER_assert(__CPROVER_OBJECT_SIZE(signature) == signature_len * sizeof(int32_t),
@@ -139,7 +139,7 @@ int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* mess
 	__CPROVER_assert(sizeof(exponent) * 8 == 32,
 		"PROPERTY 5: Public key exponent is 32 bits.");
 
-	__CPROVER_assert((sizeof(pub_key_t) - sizeof(exponent)) * 8 == 3072,
+	__CPROVER_assert((sizeof(pub_key_t) - sizeof(exponent)) * 8 == RSA_SIZE*32,
 		"PROPERTY 5: Public key modulus is 3072-bits.");
 
 	__CPROVER_assert(__is_valid_params(exponent, modulus, message, message_len, signature,
@@ -149,7 +149,7 @@ int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* mess
 	__REACHABILITY_CHECK
 
 		if (signature_len != RSA_SIZE) {
-			__CPROVER_assert(signature_len * 32 != 3072,
+			__CPROVER_assert(signature_len * 32 != RSA_SIZE*32,
 				"PROPERTY 5: Length checking: If the length of the signature is not 3072 bytes, stop.");
 			__REACHABILITY_CHECK // Not reachable atm
 
@@ -319,7 +319,7 @@ int sign_is_non_zero(rom_ext_manifest_t manifest) {
 
 
 int __help_sign_ok_format(signature_t sign) { //used for CBMC assertion + postcondition
-	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != 3072) //Signature must be 3072 bits
+	if (__CPROVER_OBJECT_SIZE(sign.value) * 8 != RSA_SIZE*32) //Signature must be 3072 bits
 		return 0;
 
 	for (int i = 0; i < RSA_SIZE; i++) {
@@ -335,7 +335,7 @@ int __help_pkey_valid(pub_key_t pkey) { //used for CBMC assertion + postconditio
 	if(sizeof(pkey.exponent) * 8 != 32)
 		return 0;
 	// Public key modulus must be 3072-bits.");
-	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != 3072)
+	if((sizeof(pkey) - sizeof(pkey.exponent)) * 8 != RSA_SIZE*32)
 		return 0;
 
 	pub_key_t* pkey_whitelist = __pkey_whitelist; //Note it uses the original whitelist (untampered)
@@ -408,7 +408,7 @@ void PROOF_HARNESS() {
 	__CPROVER_assume(boot_policy.fail_rom_ext_terminated == &__func_fail_rom_ext);
 
 	for(int i = 0; i < MAX_ROM_EXTS; i++){
-	__tampered_pkey_whitelist[i] = rom_exts_to_try.rom_exts_mfs[i].pub_signature_key; //WHITELIST TAMPERING ATTACK
+		__tampered_pkey_whitelist[i] = rom_exts_to_try.rom_exts_mfs[i].pub_signature_key; //WHITELIST TAMPERING ATTACK
 	}
 
 	for(int i = 0; i < rom_exts_to_try.size; i++){
