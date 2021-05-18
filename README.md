@@ -17,10 +17,10 @@ mask_rom_boot_code.c contains the unaltered boot code without annotations. The b
 - [x] Property 10
 
 ## Attacks (each has their own branch)
-- [x] Attack Fail Function (vulnerability found)
-- [x] Attack Image Length (vulnerability found)
-- [x] Attack PMP (vulnerability found)
+- [x] Attack Fail Function 
+- [x] Attack Image Length 
+- [x] Attack PMP
 - [x] Attack OTBN (no vulnerability detectable)
-- [x] Attack Hash/HMAC (vulnerability found)
-- [x] Attack Whitelist Tamper (vulnerability found)
-- [x] Attack Whitelist Fail Functions  (vulnerability found)
+- [x] Attack Hash/HMAC 
+- [x] Attack Whitelist Tamper 
+- [x] Attack Whitelist Fail Functions 
