@@ -9,9 +9,9 @@ mask_rom_boot_code.c contains the unaltered boot code without annotations. The b
 - [x] Property 2
 - [x] Property 3
 - [x] Property 4
-- [x] Property 5 (Partly)
-- [x] Property 6 (Disproven)
+- [x] Property 5
+- [x] Property 6
 - [x] Property 7
-- [x] Property 8 (Disproven)
+- [x] Property 8
 - [x] Property 9
 - [x] Property 10
