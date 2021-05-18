@@ -4,7 +4,8 @@ The goal is to verify the security of the boot code using CBMC
 mask_rom_boot_code.c contains the unaltered boot code without annotations. The boot code is inspired by the OpenTitan's secure boot pseudocode and specification. The unaltered boot code can be found at https://github.com/KVISDAOWNER/b00t-c0d3.
 
 
-### Verified (see description in properties.pdf)
+### Verified
+A description of the properties can be found in properties.pdf.
 - [x] Property 1
 - [x] Property 2
 - [x] Property 3
