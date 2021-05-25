@@ -421,6 +421,8 @@ void PROOF_HARNESS() {
 		__CPROVER_assume(MAX_IMAGE_LENGTH >= rom_exts_to_try.rom_exts_mfs[i].image_length && rom_exts_to_try.rom_exts_mfs[i].image_length > 0);
 		int __image_actual_size;
 		__CPROVER_assume(__image_actual_size <= MAX_IMAGE_LENGTH);
+		__CPROVER_assume(__image_actual_size < rom_exts_to_try.rom_exts_mfs[i].image_length);
+		//__CPROVER_assume(__image_actual_size > rom_exts_to_try.rom_exts_mfs[i].image_length);
 		rom_exts_to_try.rom_exts_mfs[i].image_code = malloc(sizeof(char) * __image_actual_size);
 	}
 
@@ -524,7 +526,7 @@ cbmc mask_rom.c mock_hmac.c memory_compare.c --function PROOF_HARNESS --unwind 3
 PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 RSA_SIZE = 96
 Run: 
-cbmc mask_rom.c hmac.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset HMAC_SHA2_256_update.0:431 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c hmac.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset HMAC_SHA2_256_update.0:431 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions
 
 RSA_SIZE = 5
 Run: (OUTDATED)
