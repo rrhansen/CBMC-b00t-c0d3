@@ -5,8 +5,8 @@ sw/device/rom_ext/docs/manifest.md
 sw/device/mask_rom/mask_rom.c
 sw/device/mask_rom/docs/index.md
 doc/security/specs/secure_boot/index.md
-
 */
+
 #include "hmac.h"
 #include "mask_rom.h"
 #include "memory_compare.h"
@@ -542,7 +542,7 @@ void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_t
 
 	PMP_enable_memory_protection();
 
-	//Måske step 2.iii
+	//Step 2.iii
 	for (int i = 0; i < rom_exts_to_try.size; i++) {
 
 		__CPROVER_assert(__help_check_pmp_region(i, 15, 1, 0, 0, 1),

@@ -14,6 +14,3 @@ int cmp_signature(const void* buf1, const void* buf2, unsigned int size);
 int cmp_hash_decrypt(const void* buf1, const void* buf2, unsigned int size);
 
 #endif	// MEMORY_COMPARE_H
-
-
-//Brainstorm: noget med 0-terminering, find impl af memcmp.
