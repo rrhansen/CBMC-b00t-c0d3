@@ -482,7 +482,7 @@ void PROOF_HARNESS() {
 			__CPROVER_postcondition(!__valid_signature[i],
 			"Postcondition PROPERTY 5: rom_ext INVALIDATED => signature invalid or not checked");
 
-			__CPROVER_postcondition(__imply(!__rom_ext_returned[i], !__rom_ext_fail_func[i]),
+			__CPROVER_postcondition(!__rom_ext_fail_func[i],
 			"Postcondition PROPERTY 6: (invalid rom _ext and rom_ext code !return) => that rom_ext term func not called");
 
 			__CPROVER_postcondition(!__rom_ext_called[i],
