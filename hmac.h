@@ -31,6 +31,6 @@ typedef struct {
 void HMAC_SHA2_256_init(SHA2_256_CTX *ctx);
 void HMAC_SHA2_256_update(SHA2_256_CTX *ctx, const BYTE data[], size_t len);
 void HMAC_SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[]);
-BYTE* HMAC_SHA2_256(BYTE key[], BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf);
+BYTE* HMAC_SHA2_256(BYTE key[], BYTE mes[], int size);
 
 #endif	// SHA256_H

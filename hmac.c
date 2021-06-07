@@ -161,35 +161,8 @@ void HMAC_SHA2_256_final(SHA2_256_CTX *ctx, BYTE hash[])
 	}
 }
 
-BYTE* HMAC_SHA2_256(BYTE key[], BYTE mes[], int mes_size, rom_ext_manifest_t __current_rom_ext_mf){
-	int __expected_size = 
-	sizeof(__current_rom_ext_mf.pub_signature_key)+sizeof(__current_rom_ext_mf.image_length)+__current_rom_ext_mf.image_length;
-
-	__CPROVER_assert(cmp_key(
-		mes, 
-		&__current_rom_ext_mf.pub_signature_key, 
-		sizeof(__current_rom_ext_mf.pub_signature_key)) == 0,
-		"PROPERTY 4: Message contains the key");
-
-	__CPROVER_assert(cmp_image_len(
-		mes + sizeof(__current_rom_ext_mf.pub_signature_key),
-		&__current_rom_ext_mf.image_length,
-		sizeof(__current_rom_ext_mf.image_length)) == 0,
-		"PROPERTY 4: Message contains the Image length");
-
-	__CPROVER_assert(cmp_image_code(
-		mes + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
-		__current_rom_ext_mf.image_code,
-		__current_rom_ext_mf.image_length) == 0,
-		"PROPERTY 4: Message contains the Image code");
-
-	__CPROVER_assert(mes_size == __expected_size,
-	"PROPERTY 4: Message size parameter is as expected.");
- 
-	__CPROVER_assert(__CPROVER_OBJECT_SIZE(mes) == __expected_size,
-	"PROPERTY 4: Size of message is as expected.");
-
-
+BYTE* HMAC_SHA2_256(BYTE key[], BYTE mes[], int mes_size){
+	
 	BYTE* buff = malloc(SHA2_256_BLOCK_SIZE * sizeof(BYTE));
 	SHA2_256_CTX ctx;
 
@@ -208,15 +181,6 @@ BYTE* HMAC_SHA2_256(BYTE key[], BYTE mes[], int mes_size, rom_ext_manifest_t __c
 	HMAC_SHA2_256_init(&ctx);
 	HMAC_SHA2_256_update(&ctx, key_mes_pad, HMAC_KEY_SIZE + mes_size);
 	HMAC_SHA2_256_final(&ctx, buff);
-
-
-	__CPROVER_assert(__CPROVER_OBJECT_SIZE(buff)==256/8, 
-	"PROPERTY 3: Hash is 256 bits");   
-
-	__CPROVER_assert(__CPROVER_r_ok(buff, 256/8),
-	"PROPERTY 3: hash is in readable address");
-
-	__REACHABILITY_CHECK
 		
 	return buff;
 }

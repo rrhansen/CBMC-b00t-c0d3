@@ -7,14 +7,13 @@
 #include <stdlib.h>
 #include <memory.h>
 
-#define __REACHABILITY_CHECK __CPROVER_assert(0, "Reachability check, should always \033[0;31mFAIL\033[0m");
 #define MAX_ROM_EXTS 1
 #define RSA_SIZE 96
 #define PMP_REGIONS 16
-#define MAX_IMAGE_LENGTH 2 //necessary constraint in order to terminate CBMC verification
+#define MAX_IMAGE_LENGTH 2
 
 
-//Represents a signature. Needed for CBMC OBJECT_SIZE to see if signature is of ok size
+//Represents a signature.
 typedef struct signature_t{
 	int32_t value[RSA_SIZE];
 	//something else
@@ -63,25 +62,5 @@ typedef struct boot_policy_t {
 	char* fail_rom_ext_terminated;
 	
 } boot_policy_t;
-
-
-
-//Represents a pmp region
-typedef struct __PMP_region_t {
-	int identifier;
-
-	//Locked, Read, Write, Execute
-	int R;
-	int W;
-	int E;
-	int L;
-
-} __PMP_region_t;
-
-
-typedef struct __PMP_regions_t {
-	//There are 16 PMP regions (0...15)
-	__PMP_region_t pmp_regions[PMP_REGIONS];
-} __PMP_regions_t;
 
 #endif
