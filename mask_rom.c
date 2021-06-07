@@ -1,5 +1,5 @@
 /*
-CBMC Verification of OpenTitan bootcode,
+OpenTitan bootcode,
 written based on:
 sw/device/rom_ext/docs/manifest.md
 sw/device/mask_rom/mask_rom.c
@@ -14,7 +14,6 @@ doc/security/specs/secure_boot/index.md
 
 BYTE hmac_key[HMAC_KEY_SIZE];
 
-
 // Function type used to define function pointer to the entry of the ROM_EXT stage.
 typedef void(rom_ext_boot_func)(void); 
 
@@ -23,6 +22,21 @@ typedef void(fail_func)(void);
 
 // Function type for entry point of boot policy fail rom ext terminated function.
 typedef void(fail_rom_ext_terminated_func)(rom_ext_manifest_t); 
+
+
+extern boot_policy_t FLASH_CTRL_read_boot_policy();
+
+
+extern rom_exts_manifests_t FLASH_CTRL_rom_ext_manifests_to_try(boot_policy_t boot_policy);
+
+
+extern char* OTBN_RSA_3072_DECRYPT(int32_t* signature, int signature_len, int32_t exponent, int32_t* modulus);
+
+
+extern pub_key_t* ROM_CTRL_get_whitelist();
+
+
+extern void PMP_WRITE_REGION(uint8_t reg, uint8_t r, uint8_t w, uint8_t e, uint8_t l);
 
 
 int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manifest) {
@@ -56,9 +70,6 @@ int verify_rom_ext_signature(pub_key_t rom_ext_pub_key, rom_ext_manifest_t manif
 }
 
 
-char* OTBN_RSA_3072_DECRYPT(int32_t* signature, int signature_len, int32_t exponent, int32_t* modulus);
-
-
 int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len) {
 	
 	if (signature_len != RSA_SIZE) {
@@ -78,21 +89,12 @@ int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* mess
 }
 
 
-boot_policy_t FLASH_CTRL_read_boot_policy() {}
-
-
-rom_exts_manifests_t FLASH_CTRL_rom_ext_manifests_to_try(boot_policy_t boot_policy) {}
-
-
 pub_key_t read_pub_key(rom_ext_manifest_t current_rom_ext_manifest) {
 	return current_rom_ext_manifest.pub_signature_key;
 }
 
 
-pub_key_t* ROM_CTRL_get_whitelist();
-
-
-extern int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
+int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior behavior of check func
 	pub_key_t* pkey_whitelist = ROM_CTRL_get_whitelist();
 
 	for (int i = 0; i < PKEY_WHITELIST_SIZE; i++) {
@@ -112,9 +114,6 @@ extern int check_pub_key_valid(pub_key_t rom_ext_pub_key){ //assumed behavior be
 
 	return 0;
 }
-
-
-extern void PMP_WRITE_REGION(uint8_t reg, uint8_t r, uint8_t w, uint8_t e, uint8_t l);
 
 
 void PMP_unlock_rom_ext() {
@@ -164,7 +163,6 @@ int check_rom_ext_manifest(rom_ext_manifest_t manifest) {
 	}
 	return 0;
 }
-
 
 
 void mask_rom_boot(boot_policy_t boot_policy, rom_exts_manifests_t rom_exts_to_try ){
