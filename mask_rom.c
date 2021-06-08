@@ -512,7 +512,7 @@ PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (mocked hmac)
 
 RSA_SIZE = 96
 Run:
-cbmc mask_rom.c mock_hmac.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c mock_hmac.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check --object-bits 9
 
 RSA_SIZE = 5 (SPEEDS UP VERIFICAITON) (note. remember to set in mask_rom.h)
 Run: 
@@ -522,7 +522,7 @@ cbmc mask_rom.c mock_hmac.c memory_compare.c --function PROOF_HARNESS --unwind 3
 PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 RSA_SIZE = 96
 Run: 
-cbmc mask_rom.c hmac.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset HMAC_SHA2_256_update.0:431 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
+cbmc mask_rom.c hmac.c memory_compare.c --function PROOF_HARNESS --unwind 97 --unwindset cmp_key.0:390 --unwindset cmp_image_len.0:5 --unwindset cmp_image_code.0:3 --unwindset cmp_modulus.0:385 --unwindset cmp_signature.0:385 --unwindset cmp_has_decrypt.0:33 --unwindset mask_rom_boot.0:2 --unwindset HMAC_SHA2_256_update.0:431 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check --object-bits 9
 */
 
 
