@@ -12,7 +12,10 @@ doc/security/specs/secure_boot/index.md
 #include "memory_compare.h"
 
 //HMAC key in OTP/Keymanager
-BYTE __hmac_key[HMAC_KEY_SIZE];
+BYTE HMAC_KEY[HMAC_KEY_SIZE];
+BYTE WIPE[WIPE_SIZE]; //32 bits
+BYTE ATTACKER_HMAC_KEY[HMAC_KEY_SIZE];
+
 
 //Whitelist in ROM
 #define __PKEY_WHITELIST_SIZE 1
@@ -31,6 +34,8 @@ int __verify_signature_called[MAX_ROM_EXTS] = { };
 int __imply(int a, int b) { return a ? b : 1; }
 int __valid_signature[MAX_ROM_EXTS] = { }; //result of verify_rom_ext_signature
 
+
+int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* message, int message_len, int32_t* signature, int signature_len, rom_ext_manifest_t __current_rom_ext_mf);
 
 //The configured PMP regions for each rom ext.
 __PMP_regions_t __rom_ext_pmp_region[MAX_ROM_EXTS];
@@ -121,6 +126,81 @@ int __is_valid_params(int32_t exponent, int32_t* modulus, char* message, int mes
 	return 1;
 }
 
+//------------------------------------HMAC------------------------------------
+//internal HMAC values
+BYTE hmac_key[HMAC_KEY_SIZE]; //256 bits
+
+void setKey(BYTE* keyBuffer){
+  memcpy(
+    keyBuffer,
+    hmac_key,
+    sizeof(hmac_key)
+  );
+}
+
+
+void setMsg(BYTE* msgBuffer, int size){
+  //copies message buffer to internal message value
+}
+
+
+void wipe(BYTE* wipeBuffer){
+  for(int i = 0; i < HMAC_KEY_SIZE; i++){
+    hmac_key[i] ^= wipeBuffer[i % WIPE_SIZE]; //wipe secret is repeated 8 times
+  }
+}
+
+char* readResult(){ //HMAC result
+ return malloc(256 / 8);
+}
+
+BYTE* HMAC_SHA2_256(BYTE key[], BYTE wipe_key[], BYTE mes[], int size, rom_ext_manifest_t __current_rom_ext_mf) {
+	
+	int __expected_size =
+		sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length) + __current_rom_ext_mf.image_length;
+
+	__CPROVER_assert(cmp_key(
+		mes,
+		&__current_rom_ext_mf.pub_signature_key,
+		sizeof(__current_rom_ext_mf.pub_signature_key)) == 0,
+		"PROPERTY 4: Message contains the key");
+
+	__CPROVER_assert(cmp_image_len(
+		mes + sizeof(__current_rom_ext_mf.pub_signature_key),
+		&__current_rom_ext_mf.image_length,
+		sizeof(__current_rom_ext_mf.image_length)) == 0,
+		"PROPERTY 4: Message contains the Image length");
+
+	__CPROVER_assert(cmp_image_code(
+		mes + sizeof(__current_rom_ext_mf.pub_signature_key) + sizeof(__current_rom_ext_mf.image_length),
+		__current_rom_ext_mf.image_code,
+		__current_rom_ext_mf.image_length) == 0,
+		"PROPERTY 4: Message contains the Image code");
+
+	__CPROVER_assert(size == __expected_size,
+		"PROPERTY 4: Message size parameter is as expected.");
+
+	__CPROVER_assert(__CPROVER_OBJECT_SIZE(mes) == __expected_size,
+		"PROPERTY 4: Size of message is as expected.");
+	
+  setKey(key);
+  setMsg(mes, size);
+  wipe(wipe_key);
+	char* hash = readResult(); //model it to be ok for PROPERTY 5
+
+	__CPROVER_assert(__CPROVER_OBJECT_SIZE(hash) == 256 / 8,
+		"PROPERTY 3: Hash is 256 bits");
+
+	__CPROVER_assert(__CPROVER_r_ok(hash, 256 / 8),
+		"PROPERTY 3: hash is in readable address");
+
+	__REACHABILITY_CHECK
+
+	return hash;
+}
+
+//-----------------------------------OTBN-------------------------------------
+
 
 char* OTBN_RSA_3072_DECRYPT(int32_t* signature, int signature_len, int32_t exponent, int32_t* modulus) {
 	char* decrypt = malloc(256 / 8); //model it to be ok for PROPERTY 5
@@ -159,7 +239,7 @@ int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* mess
 	__REACHABILITY_CHECK
 
 	char* decrypt = OTBN_RSA_3072_DECRYPT(signature, signature_len, exponent, modulus);
-	char* hash = HMAC_SHA2_256(__hmac_key, message, message_len, __current_rom_ext_mf); //message_len in bytes
+	char* hash = HMAC_SHA2_256(HMAC_KEY, WIPE, message, message_len, __current_rom_ext_mf); //message_len in bytes
 
 	__CPROVER_assert(!__CPROVER_array_equal(decrypt, signature),
 		"PROPERTY 5: Decrypted signature is different from signature");
@@ -189,6 +269,7 @@ int OTBN_RSASSA_PKCS1_V1_5_VERIFY(int32_t exponent, int32_t* modulus, char* mess
 	}
 }
 
+//------------------------------Flash Controller------------------------------
 
 boot_policy_t FLASH_CTRL_read_boot_policy() {}
 
@@ -232,26 +313,6 @@ extern void PMP_WRITE_REGION(uint8_t reg, uint8_t r, uint8_t w, uint8_t e, uint8
 	__REACHABILITY_CHECK
 }
 
-
-void PMP_unlock_rom_ext() {
-	//Read, Execute, Locked the address space of the ROM extension image
-	PMP_WRITE_REGION(        0,        1,        0,        1,        1);
-	//                  Region      Read     Write	  Execute	  Locked 
-	__register_pmp_region(__current_rom_ext, 0, 1, 0, 1, 1);
-	__REACHABILITY_CHECK
-}
-
-
-void PMP_enable_memory_protection() {
-	//Apply PMP region 15 to cover entire flash
-	PMP_WRITE_REGION(       15,        1,        0,        0,        1);
-	//                  Region      Read     Write   Execute    Locked 
-
-	__register_pmp_region(-1, 15, 1, 0, 0, 1);
-	__REACHABILITY_CHECK
-}
-
-
 void __register_pmp_region(int rom_ext, int pmp_id, int r, int w, int e, int l){
 	if (rom_ext == -1) {
 		//register PMP region for all rom exts.
@@ -273,7 +334,49 @@ void __register_pmp_region(int rom_ext, int pmp_id, int r, int w, int e, int l){
 }
 
 
-void __some_entry_func() { __rom_ext_called[__current_rom_ext] = 1; /*for CBMC PROPERTY 6*/ }
+void PMP_unlock_rom_ext() {
+	//Read, Execute, Locked the address space of the ROM extension image
+	PMP_WRITE_REGION(        0,        1,        0,        1,        1);
+	//                  Region      Read     Write	  Execute	  Locked 
+	__register_pmp_region(__current_rom_ext, 0, 1, 0, 1, 1);
+	__REACHABILITY_CHECK
+}
+
+
+void PMP_enable_memory_protection() {
+	//Apply PMP region 15 to cover entire flash
+	PMP_WRITE_REGION(       15,        1,        0,        0,        1);
+	//                  Region      Read     Write   Execute    Locked 
+
+	__register_pmp_region(-1, 15, 1, 0, 0, 1);
+	__REACHABILITY_CHECK
+}
+
+
+void __some_entry_func() { 
+  __rom_ext_called[__current_rom_ext] = 1; /*for CBMC PROPERTY 6*/ 
+  
+
+
+  unsigned int call_count = 3;
+  for(int i = 0; i < call_count; i++){
+    BYTE ATTACKER_WIPE_KEY[WIPE_SIZE]; //32 bits arbitrary wipe key
+    int n;        
+    __CPROVER_assume(n <= 2);
+    switch(n){ //switch with nondeterministic n to model arbitrary call order
+      case 0:
+        setKey(ATTACKER_HMAC_KEY);
+        break;
+      case 1:
+        char* mes = malloc(sizeof(char)*10);
+        setMsg(mes, sizeof(char)*10);
+        break;
+      case 2:
+        wipe(ATTACKER_WIPE_KEY);
+        break;
+    }
+  }
+}
 
 
 int final_jump_to_rom_ext(rom_ext_manifest_t current_rom_ext_manifest) { // Returns a boolean value.
@@ -408,6 +511,8 @@ int __help_all_pmp_inactive(){
 void __func_fail() { __boot_failed_called[__current_rom_ext] = 1; } //used for CBMC
 void __func_fail_rom_ext(rom_ext_manifest_t _) { __rom_ext_fail_func[__current_rom_ext] = 1; } //used for CBMC
 
+BYTE empty[WIPE_SIZE]; //empty array used to make assumption about HMAC WIPE
+
 void PROOF_HARNESS() {
 	boot_policy_t boot_policy = FLASH_CTRL_read_boot_policy();
 	rom_exts_manifests_t rom_exts_to_try = FLASH_CTRL_rom_ext_manifests_to_try(boot_policy);
@@ -425,6 +530,28 @@ void PROOF_HARNESS() {
 		//__CPROVER_assume(__image_actual_size > rom_exts_to_try.rom_exts_mfs[i].image_length);
 		rom_exts_to_try.rom_exts_mfs[i].image_code = malloc(sizeof(char) * __image_actual_size);
 	}
+
+  ///For HMAC
+  BYTE n_wipe[WIPE_SIZE]; //nondeterministic wipe value
+  memcpy(WIPE, n_wipe, sizeof(n_wipe)); //Assign WIPE nondeterministic value
+
+  BYTE n_hmac_key[HMAC_KEY_SIZE];
+  memcpy(HMAC_KEY, n_hmac_key, sizeof(n_hmac_key));
+
+  BYTE n_attacker_hmac_key[HMAC_KEY_SIZE];
+  memcpy(ATTACKER_HMAC_KEY, n_attacker_hmac_key, sizeof(n_attacker_hmac_key));
+
+  //Attacker does not know the secret key at initialization
+  __CPROVER_assume(memcmp(HMAC_KEY, ATTACKER_HMAC_KEY, sizeof(HMAC_KEY)) != 0);
+  __CPROVER_precondition(memcmp(HMAC_KEY, ATTACKER_HMAC_KEY, sizeof(HMAC_KEY)) != 0, 
+    "Precondition: Attacker does not know the defenders secret key");
+
+
+  //XOR of 0 does nothing so we avoid this case
+  __CPROVER_assume(memcmp(WIPE, empty, sizeof(WIPE)) != 0);
+  __CPROVER_precondition(memcmp(WIPE, empty, sizeof(WIPE)) != 0, 
+    "Precondition: Wipe secret is different from 0");
+
 
 	mask_rom_boot(boot_policy, rom_exts_to_try);
 
@@ -444,7 +571,12 @@ void PROOF_HARNESS() {
 								__verify_signature_called[i]),
 		"Postcondition PROPERTY 5: If identifier, sign, and key are valid then the signature verification function is called");
 
-		if (__validated_rom_exts[i]) { //validated - try to boot from
+
+    __CPROVER_postcondition(memcmp(hmac_key, HMAC_KEY, sizeof(hmac_key) != 0),
+    "Postcondition: mask_ROM's secret HMAC key is still secret");
+
+    
+    if (__validated_rom_exts[i]) { //validated - try to boot from
 			__REACHABILITY_CHECK
 
 			__CPROVER_postcondition(__help_check_rom_ext_manifest(rom_exts_to_try.rom_exts_mfs[i]),
@@ -521,6 +653,8 @@ cbmc mask_rom.c mock_hmac.c memory_compare.c --function PROOF_HARNESS --unwind 9
 RSA_SIZE = 5
 Run: 
 cbmc mask_rom.c mock_hmac.c memory_compare.c --function PROOF_HARNESS --unwind 33 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
+
+cbmc mask_rom.c memory_compare.c --function PROOF_HARNESS --unwind 33 --unwindset memcmp.0:25 --unwindset mask_rom_boot.0:2 --unwindset PROOF_HARNESS.0:2 --unwinding-assertions --pointer-check --bounds-check
 
 
 PROPERTY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10

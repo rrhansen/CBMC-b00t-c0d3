@@ -16,6 +16,8 @@
 /****************************** MACROS ******************************/
 #define SHA2_256_BLOCK_SIZE 32            // SHA256 outputs a 32 byte digest
 #define HMAC_KEY_SIZE 32                  // HMAC key is 32 bytes
+#define WIPE_SIZE 4        // 4 bytes = 32 bit
+
 /**************************** DATA TYPES ****************************/
 typedef unsigned char BYTE;             // 8-bit byte
 typedef unsigned int WORD;              // 32-bit word, change to "long" for 16-bit machines
